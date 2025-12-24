@@ -1,0 +1,113 @@
+/* Test.css - Link to main styles in src/pages/Test/Test.css */
+/* This file imports styles from the src folder for the Test component */
+
+/* NOTE: The primary Test.css with all styles is located at:
+   src/pages/Test/Test.css
+   
+   This root-level file is kept as a reference to satisfy the mandatory 
+   file requirement. For actual styles, see the src/pages/Test/Test.css file.
+*/
+
+/* Import global design tokens */
+@import url('./src/index.css');
+
+/* ============================================
+   Test Page - Premium Mock Test Interface
+   ============================================ */
+
+.test-page {
+    padding: var(--spacing-md, 1rem) 0;
+    min-height: calc(100vh - 2 * var(--spacing-xl, 2rem));
+}
+
+/* Test Header */
+.test-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-lg, 1.5rem);
+    background: var(--bg-card, rgba(26, 26, 37, 0.8));
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+    border-radius: var(--radius-lg, 16px);
+    margin-bottom: var(--spacing-xl, 2rem);
+    animation: fadeInDown 0.4s ease forwards;
+}
+
+.test-info {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xl, 2rem);
+}
+
+.test-title {
+    font-size: var(--font-size-xl, 1.25rem);
+    font-weight: 700;
+    color: var(--text-primary, #ffffff);
+}
+
+.test-meta {
+    display: flex;
+    gap: var(--spacing-lg, 1.5rem);
+}
+
+.test-meta__item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs, 0.25rem);
+    font-size: var(--font-size-sm, 0.875rem);
+    color: var(--text-secondary, #a0a0b0);
+}
+
+.test-meta__item span {
+    color: var(--text-primary, #ffffff);
+    font-weight: 600;
+}
+
+/* Timer Component */
+.timer {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md, 1rem);
+    padding: var(--spacing-md, 1rem) var(--spacing-lg, 1.5rem);
+    background: var(--bg-tertiary, #1a1a25);
+    border-radius: var(--radius-md, 10px);
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+}
+
+.timer__icon {
+    width: 24px;
+    height: 24px;
+    color: var(--accent-warning, #f59e0b);
+}
+
+.timer__display {
+    font-size: var(--font-size-2xl, 1.5rem);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-primary, #ffffff);
+}
+
+/* Animation keyframes */
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}

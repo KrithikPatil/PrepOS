@@ -1,0 +1,329 @@
+.agent-swarm {
+    padding: var(--spacing-md) 0;
+}
+
+/* Header */
+.agent-swarm__header {
+    margin-bottom: var(--spacing-2xl);
+    animation: fadeInDown var(--transition-slow) forwards;
+}
+
+.agent-swarm__title {
+    font-size: var(--font-size-3xl);
+    font-weight: 800;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-sm);
+}
+
+.agent-swarm__subtitle {
+    font-size: var(--font-size-base);
+    color: var(--text-secondary);
+    max-width: 600px;
+}
+
+/* Progress Overview */
+.swarm-progress {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-xl);
+    margin-bottom: var(--spacing-2xl);
+    animation: fadeInUp var(--transition-slow) forwards;
+}
+
+.swarm-progress__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-lg);
+}
+
+.swarm-progress__title {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.swarm-progress__eta {
+    font-size: var(--font-size-sm);
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.swarm-progress__bar {
+    height: 8px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+}
+
+.swarm-progress__fill {
+    height: 100%;
+    background: var(--gradient-primary);
+    border-radius: var(--radius-full);
+    transition: width var(--transition-slow);
+    position: relative;
+}
+
+.swarm-progress__fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg,
+            transparent,
+            rgba(255, 255, 255, 0.3),
+            transparent);
+    animation: shimmer 2s infinite;
+}
+
+/* Agent Grid */
+.agent-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-xl);
+}
+
+/* Agent Card */
+.agent-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-xl);
+    transition: all var(--transition-base);
+    animation: fadeInUp var(--transition-slow) forwards;
+    animation-delay: calc(var(--index) * 150ms);
+    opacity: 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.agent-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--border-medium);
+}
+
+.agent-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--agent-color);
+}
+
+/* Status Indicator */
+.agent-card--processing {
+    border-color: var(--agent-color);
+    box-shadow: 0 0 30px color-mix(in srgb, var(--agent-color) 20%, transparent);
+}
+
+.agent-card--processing::before {
+    animation: glow 2s ease-in-out infinite;
+}
+
+.agent-card--completed {
+    opacity: 0.9;
+}
+
+/* Agent Header */
+.agent-card__header {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
+}
+
+.agent-card__icon {
+    width: 64px;
+    height: 64px;
+    border-radius: var(--radius-lg);
+    background: color-mix(in srgb, var(--agent-color) 15%, transparent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.agent-card--processing .agent-card__icon {
+    animation: float 2s ease-in-out infinite;
+}
+
+.agent-card__info {
+    flex: 1;
+}
+
+.agent-card__name {
+    font-size: var(--font-size-xl);
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-xs);
+}
+
+.agent-card__description {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+/* Status Badge */
+.agent-status {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-xs) var(--spacing-md);
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.agent-status--idle {
+    background: var(--bg-tertiary);
+    color: var(--text-muted);
+}
+
+.agent-status--processing {
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--accent-primary);
+}
+
+.agent-status--processing::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    background: var(--accent-primary);
+    border-radius: 50%;
+    animation: pulse 1s ease-in-out infinite;
+}
+
+.agent-status--completed {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--accent-success);
+}
+
+/* Agent Output */
+.agent-card__output {
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-lg);
+    margin-top: var(--spacing-lg);
+}
+
+.agent-output__message {
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+    line-height: 1.6;
+    margin-bottom: var(--spacing-md);
+}
+
+.agent-output__stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+}
+
+.agent-output__stat {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    background: var(--bg-card);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+}
+
+.agent-output__stat strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+/* Waiting State */
+.agent-waiting {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-xl);
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.agent-waiting__icon {
+    font-size: 48px;
+    margin-bottom: var(--spacing-md);
+    opacity: 0.5;
+}
+
+.agent-waiting__text {
+    font-size: var(--font-size-sm);
+}
+
+/* Processing Animation */
+.processing-dots {
+    display: inline-flex;
+    gap: 4px;
+    margin-left: var(--spacing-sm);
+}
+
+.processing-dots span {
+    width: 6px;
+    height: 6px;
+    background: var(--accent-primary);
+    border-radius: 50%;
+    animation: pulse 1.4s infinite ease-in-out both;
+}
+
+.processing-dots span:nth-child(1) {
+    animation-delay: -0.32s;
+}
+
+.processing-dots span:nth-child(2) {
+    animation-delay: -0.16s;
+}
+
+.processing-dots span:nth-child(3) {
+    animation-delay: 0;
+}
+
+/* Agent Actions */
+.agent-card__actions {
+    display: flex;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-lg);
+    padding-top: var(--spacing-lg);
+    border-top: 1px solid var(--border-subtle);
+}
+
+.agent-action-btn {
+    flex: 1;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-subtle);
+    transition: all var(--transition-fast);
+}
+
+.agent-action-btn:hover {
+    border-color: var(--accent-primary);
+    background: var(--gradient-card);
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .agent-grid {
+        grid-template-columns: 1fr;
+    }
+}
