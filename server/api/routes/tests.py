@@ -182,5 +182,132 @@ async def submit_test(test_id: str, submission: SubmitRequest, request: Request)
     }
 
 
+class GenerateTestRequest(BaseModel):
+    name: Optional[str] = None
+    sections: List[str]
+    difficulty: str = "medium"
+    question_count: int = 20
+    duration: int = 40
+    focus_topics: Optional[List[str]] = []
+
+
+@router.post("/generate")
+async def generate_test(config: GenerateTestRequest, request: Request):
+    """Generate AI test with custom questions"""
+    # Verify auth
+    auth_header = request.headers.get("Authorization")
+    if not auth_header:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    token = auth_header.split(" ")[1]
+    payload = verify_token(token)
+    user_id = payload["sub"]
+    
+    tests_col = get_tests_collection()
+    questions_col = get_questions_collection()
+    
+    # Import the Architect agent for question generation
+    from agents.architect import ArchitectAgent
+    
+    # Generate test name if not provided
+    test_name = config.name or f"Custom Test - {datetime.now().strftime('%d %b %Y %H:%M')}"
+    
+    # Prepare context for AI
+    questions_per_section = config.question_count // len(config.sections)
+    generated_questions = []
+    
+    try:
+        architect = ArchitectAgent()
+        
+        for section in config.sections:
+            # Create prompt for this section
+            analysis = {
+                "weak_topics": config.focus_topics or [],
+                "section": section,
+                "difficulty": config.difficulty,
+                "question_count": questions_per_section,
+            }
+            
+            # Generate questions using Architect
+            result = await architect.generate_questions(analysis)
+            
+            if result.get("success") and result.get("questions"):
+                for q in result["questions"]:
+                    question_doc = {
+                        "section": section,
+                        "topic": q.get("topic", config.focus_topics[0] if config.focus_topics else "General"),
+                        "difficulty": config.difficulty,
+                        "type": q.get("type", "MCQ"),
+                        "passage": q.get("passage"),
+                        "question": q.get("question", q.get("text", "")),
+                        "options": q.get("options", [
+                            {"key": "A", "text": q.get("option_a", "Option A")},
+                            {"key": "B", "text": q.get("option_b", "Option B")},
+                            {"key": "C", "text": q.get("option_c", "Option C")},
+                            {"key": "D", "text": q.get("option_d", "Option D")},
+                        ]),
+                        "correctAnswer": q.get("correct_answer", q.get("answer", "A")),
+                        "explanation": q.get("explanation", ""),
+                        "isAIGenerated": True,
+                        "createdAt": datetime.utcnow(),
+                        "createdBy": ObjectId(user_id),
+                    }
+                    generated_questions.append(question_doc)
+    
+    except Exception as e:
+        # Fallback: Create placeholder questions if AI fails
+        print(f"AI generation failed: {e}")
+        for section in config.sections:
+            for i in range(questions_per_section):
+                placeholder = {
+                    "section": section,
+                    "topic": config.focus_topics[0] if config.focus_topics else "General",
+                    "difficulty": config.difficulty,
+                    "type": "MCQ",
+                    "passage": None,
+                    "question": f"[AI Generation Pending] {section} Question {i+1} on {', '.join(config.focus_topics) or 'general topics'}",
+                    "options": [
+                        {"key": "A", "text": "Option A"},
+                        {"key": "B", "text": "Option B"},
+                        {"key": "C", "text": "Option C"},
+                        {"key": "D", "text": "Option D"},
+                    ],
+                    "correctAnswer": "A",
+                    "explanation": "AI-generated explanation will be available soon.",
+                    "isAIGenerated": True,
+                    "createdAt": datetime.utcnow(),
+                    "createdBy": ObjectId(user_id),
+                }
+                generated_questions.append(placeholder)
+    
+    # Insert questions into MongoDB
+    question_ids = []
+    if generated_questions:
+        result = await questions_col.insert_many(generated_questions)
+        question_ids = [str(qid) for qid in result.inserted_ids]
+    
+    # Create test document
+    test_doc = {
+        "name": test_name,
+        "type": "sectional" if len(config.sections) == 1 else "full",
+        "section": config.sections[0] if len(config.sections) == 1 else None,
+        "duration": config.duration,
+        "questionIds": question_ids,
+        "isAIGenerated": True,
+        "difficulty": config.difficulty,
+        "focusTopics": config.focus_topics,
+        "createdAt": datetime.utcnow(),
+        "createdBy": ObjectId(user_id),
+    }
+    
+    test_result = await tests_col.insert_one(test_doc)
+    
+    return {
+        "test_id": str(test_result.inserted_id),
+        "message": f"Generated {len(question_ids)} questions for {test_name}",
+        "question_count": len(question_ids),
+    }
+
+
 # Import timedelta for submission
 from datetime import timedelta

@@ -113,6 +113,31 @@ export const testService = {
     },
 
     /**
+     * Create AI-generated test
+     * @param {Object} config - { name, sections, difficulty, questionCount, duration, focusTopics }
+     */
+    createAITest: async (config) => {
+        try {
+            const result = await api.post('/tests/generate', {
+                name: config.name,
+                sections: config.sections,
+                difficulty: config.difficulty,
+                question_count: config.questionCount,
+                duration: config.duration,
+                focus_topics: config.focusTopics || [],
+            });
+            return {
+                success: true,
+                testId: result.test_id,
+                message: result.message,
+            };
+        } catch (error) {
+            console.error('Failed to create AI test:', error);
+            return { success: false, error: error.message };
+        }
+    },
+
+    /**
      * Format test data for frontend consumption
      * @param {Object} testData - { test, questions }
      */
