@@ -418,47 +418,6 @@ Interactive API documentation available at: http://localhost:3001/docs
 
 ---
 
-## Deploy to Render
-
-PrepOS can be deployed to [Render](https://render.com) using the included `render.yaml` blueprint.
-
-### Quick Deploy
-
-1. **Fork/Push** this repo to your GitHub account
-2. Go to [Render Dashboard](https://dashboard.render.com/)
-3. Click **New** → **Blueprint**
-4. Connect your GitHub repo and select the branch
-5. Render will detect `render.yaml` and create both services
-
-### Manual Deploy
-
-#### Backend (Web Service)
-1. Create a new **Web Service**
-2. Connect your repo, set **Root Directory** to `server`
-3. **Build Command**: `pip install -r requirements.txt`
-4. **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
-5. Add environment variables:
-   - `MONGODB_URI` - Your MongoDB Atlas connection string
-   - `JWT_SECRET` - A secure random string
-   - `GEMINI_API_KEY` - Your Gemini API key
-   - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` - OAuth credentials
-   - `GOOGLE_REDIRECT_URI` - `https://your-backend.onrender.com/api/auth/google/callback`
-   - `FRONTEND_URL` - `https://your-frontend.onrender.com`
-
-#### Frontend (Static Site)
-1. Create a new **Static Site**
-2. **Build Command**: `npm install && npm run build`
-3. **Publish Directory**: `build`
-4. Add environment variable:
-   - `REACT_APP_API_URL` - `https://your-backend.onrender.com/api`
-5. Add a rewrite rule: `/*` → `/index.html` (for React Router)
-
-### Update OAuth Redirect URIs
-After deploying, update your Google OAuth credentials to include:
-- `https://your-backend.onrender.com/api/auth/google/callback`
-
----
-
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
