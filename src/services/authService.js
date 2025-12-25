@@ -42,7 +42,7 @@ export const isAuthenticated = () => {
  * Redirects user to Google for authentication
  */
 export const getGoogleLoginUrl = () => {
-    const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+    const API_URL = process.env.REACT_APP_API_URL || 'https://prepos.onrender.com/api';
     return `${API_URL}/auth/google`;
 };
 
