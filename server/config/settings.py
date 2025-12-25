@@ -36,10 +36,11 @@ class Settings(BaseSettings):
     debug: bool = True
     
     # AI Models Configuration
-    model_architect: str = "gemini-2.5-pro"      # Complex reasoning for questions
-    model_detective: str = "gemini-2.5-flash"    # Fast pattern recognition
-    model_tutor: str = "gemini-2.5-pro"          # Deep explanations
-    model_strategist: str = "gemini-2.5-flash"   # Planning, cost-efficient
+    # Available: gemini-2.5-flash, gemini-2.5-pro
+    model_architect: str = "gemini-2.5-flash"  # Complex reasoning for questions
+    model_detective: str = "gemini-2.5-flash"  # Fast pattern recognition
+    model_tutor: str = "gemini-2.5-flash"      # Deep explanations
+    model_strategist: str = "gemini-2.5-flash" # Planning, cost-efficient
     
     class Config:
         env_file = ".env"

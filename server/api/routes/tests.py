@@ -207,7 +207,7 @@ async def generate_test(config: GenerateTestRequest, request: Request):
     questions_col = get_questions_collection()
     
     # Import the Architect agent for question generation
-    from agents.architect import ArchitectAgent
+    from agents import architect
     
     # Generate test name if not provided
     test_name = config.name or f"Custom Test - {datetime.now().strftime('%d %b %Y %H:%M')}"
@@ -217,19 +217,19 @@ async def generate_test(config: GenerateTestRequest, request: Request):
     generated_questions = []
     
     try:
-        architect = ArchitectAgent()
-        
         for section in config.sections:
-            # Create prompt for this section
-            analysis = {
-                "weak_topics": config.focus_topics or [],
-                "section": section,
-                "difficulty": config.difficulty,
-                "question_count": questions_per_section,
+            # Create mock attempt and performance data for Architect
+            mock_attempt = {
+                "score": {"obtained": 0, "total": 0, "percentage": 0, "correct": 0, "incorrect": 0, "unattempted": 0}
+            }
+            user_performance = {
+                "weakTopics": config.focus_topics or [],
+                "sectionWise": {section: 50},  # Default 50% to trigger question generation
+                "topicWise": {topic: 50 for topic in (config.focus_topics or [])}
             }
             
-            # Generate questions using Architect
-            result = await architect.generate_questions(analysis)
+            # Generate questions using Architect agent
+            result = await architect.run(mock_attempt, user_performance)
             
             if result.get("success") and result.get("questions"):
                 for q in result["questions"]:

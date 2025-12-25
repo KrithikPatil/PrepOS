@@ -112,6 +112,7 @@ async def generate_with_retry(
                 config.response_mime_type = "application/json"
             
             # Make API call with timeout
+            logger.info(f"📤 Calling Gemini API: model={model}")
             response = await asyncio.wait_for(
                 asyncio.to_thread(
                     client.models.generate_content,
@@ -122,14 +123,23 @@ async def generate_with_retry(
                 timeout=60.0  # 60 second timeout
             )
             
+            # Log raw response
+            logger.info(f"📥 Gemini API response received")
+            if response.text:
+                logger.info(f"📄 Raw response length: {len(response.text)} chars")
+                logger.debug(f"📄 Raw response preview: {response.text[:500]}...")
+            
             # Parse response
             if response.text:
                 if response_format == "json":
                     import json
                     try:
-                        return json.loads(response.text)
+                        parsed = json.loads(response.text)
+                        logger.info(f"✅ JSON parsed successfully. Keys: {list(parsed.keys()) if isinstance(parsed, dict) else 'array'}")
+                        return parsed
                     except json.JSONDecodeError as e:
                         logger.warning(f"JSON parse error: {e}. Returning raw text.")
+                        logger.warning(f"Failed JSON content: {response.text[:300]}...")
                         return {"raw_response": response.text, "parse_error": str(e)}
                 return {"text": response.text}
             
@@ -215,18 +225,17 @@ def get_model_for_task(task_type: str) -> str:
     """
     Select appropriate model based on task complexity
     
-    - Complex reasoning (questions, explanations): gemini-2.5-pro
-    - Pattern recognition (mistakes, planning): gemini-2.5-flash
-    - Quick responses: gemini-2.5-flash-lite
+    - Complex reasoning (questions, explanations): gemini-1.5-pro
+    - Pattern recognition (mistakes, planning): gemini-1.5-flash
     """
     
     model_map = {
-        "question_generation": settings.model_architect,    # gemini-2.5-pro
-        "mistake_analysis": settings.model_detective,       # gemini-2.5-flash
-        "explanation": settings.model_tutor,                # gemini-2.5-pro
-        "roadmap": settings.model_strategist,               # gemini-2.5-flash
-        "chat": "gemini-2.5-flash",                         # Quick chat
-        "default": "gemini-2.5-flash"
+        "question_generation": settings.model_architect,    # gemini-1.5-pro
+        "mistake_analysis": settings.model_detective,       # gemini-1.5-flash
+        "explanation": settings.model_tutor,                # gemini-1.5-pro
+        "roadmap": settings.model_strategist,               # gemini-1.5-flash
+        "chat": "gemini-1.5-flash",                         # Quick chat
+        "default": "gemini-1.5-flash"
     }
     
     return model_map.get(task_type, model_map["default"])

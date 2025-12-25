@@ -3,13 +3,27 @@ PrepOS Backend - FastAPI Application
 Main entry point for the API server
 """
 
+import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 from contextlib import asynccontextmanager
 
 from config.settings import get_settings
 from db.mongodb import MongoDB
-from api.routes import auth, tests, agents, students
+from api.routes import auth, tests, agents, students, question_generator
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s | %(levelname)s | %(name)s | %(message)s',
+    datefmt='%H:%M:%S'
+)
+
+# Set specific loggers
+logging.getLogger("api.routes.question_generator").setLevel(logging.INFO)
+logging.getLogger("agents.gemini_client").setLevel(logging.INFO)
+logging.getLogger("agents.architect").setLevel(logging.INFO)
 
 settings = get_settings()
 
@@ -33,6 +47,9 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+
+# Session middleware - REQUIRED for OAuth state handling
+app.add_middleware(SessionMiddleware, secret_key=settings.jwt_secret)
 
 # CORS middleware for React frontend
 app.add_middleware(
@@ -60,6 +77,7 @@ app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(tests.router, prefix="/api/tests", tags=["Tests"])
 app.include_router(agents.router, prefix="/api/agents", tags=["AI Agents"])
 app.include_router(students.router, prefix="/api/students", tags=["Students"])
+app.include_router(question_generator.router, prefix="/api/questions", tags=["Question Generation"])
 
 
 if __name__ == "__main__":

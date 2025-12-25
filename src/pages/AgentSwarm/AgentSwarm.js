@@ -222,9 +222,9 @@ function AgentSwarm() {
 
                         <button
                             className="as-btn as-btn--hero"
-                            onClick={() => navigate('/test')}
+                            onClick={() => navigate('/generate')}
                         >
-                            <span>Start Mock Test</span>
+                            <span>Generate Practice Questions</span>
                             <Icon name="arrowRight" size={20} />
                         </button>
                     </div>
@@ -320,9 +320,9 @@ function AgentSwarm() {
                         <p>Take a mock test and let our AI agents guide your preparation.</p>
                         <button
                             className="as-btn as-btn--primary as-btn--lg"
-                            onClick={() => navigate('/test')}
+                            onClick={() => navigate('/generate')}
                         >
-                            Start Your First Test
+                            Generate Questions Now
                             <Icon name="arrowRight" size={18} />
                         </button>
                     </div>

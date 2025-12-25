@@ -12,8 +12,10 @@ import AgentSwarm from './pages/AgentSwarm/AgentSwarm';
 import Roadmap from './pages/Roadmap/Roadmap';
 import KnowYourExam from './pages/KnowYourExam/KnowYourExam';
 import PreviousTests from './pages/PreviousTests/PreviousTests';
+import QuestionGenerator from './pages/QuestionGenerator/QuestionGenerator';
 import Login from './pages/Auth/Login';
 import Signup from './pages/Auth/Signup';
+import AuthCallback from './pages/Auth/AuthCallback';
 
 /**
  * PrepOS - CAT Preparation Platform
@@ -51,6 +53,7 @@ function AppRoutes() {
             {/* Public Routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
 
             {/* Protected Routes */}
             <Route path="/" element={
@@ -113,6 +116,13 @@ function AppRoutes() {
                 <ProtectedRoute>
                     <Layout>
                         <PreviousTests />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/generate" element={
+                <ProtectedRoute>
+                    <Layout>
+                        <QuestionGenerator />
                     </Layout>
                 </ProtectedRoute>
             } />
