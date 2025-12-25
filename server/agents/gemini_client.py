@@ -111,7 +111,7 @@ async def generate_with_retry(
             if response_format == "json":
                 config.response_mime_type = "application/json"
             
-            # Make API call with timeout
+            # Make API call with timeout (120s for complex question generation)
             logger.info(f"📤 Calling Gemini API: model={model}")
             response = await asyncio.wait_for(
                 asyncio.to_thread(
@@ -120,7 +120,7 @@ async def generate_with_retry(
                     contents=prompt,
                     config=config
                 ),
-                timeout=60.0  # 60 second timeout
+                timeout=120.0  # 120 second timeout for question generation
             )
             
             # Log raw response

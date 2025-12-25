@@ -36,40 +36,88 @@ function Test() {
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [testStarted, setTestStarted] = useState(false);
 
+    // Proctoring state
+    const [showStartScreen, setShowStartScreen] = useState(true);
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const [violationCount, setViolationCount] = useState(0);
+    const [showViolationWarning, setShowViolationWarning] = useState(false);
+    const [violationMessage, setViolationMessage] = useState('');
+    const MAX_VIOLATIONS = 2;
+
     // Timer state
     const [totalSeconds, setTotalSeconds] = useState(0);
     const [lastQuestionTime, setLastQuestionTime] = useState(Date.now());
 
-    // Get test mode context
+    // Get test mode context (not used for layout changes)
     const { enterTestMode, exitTestMode } = useTestMode();
 
-    // Focus Mode
-    const {
-        showWarning,
-        warningMessage,
-        remainingAttempts,
-        enterFullscreen,
-    } = useFocusMode({
-        onAutoSubmit: (reason) => {
-            handleSubmitTest(reason);
-        },
-        enabled: testStarted
-    });
+    // Proctoring: Log a violation
+    const logViolation = useCallback((type, message) => {
+        setViolationCount(prev => {
+            const newCount = prev + 1;
+            if (newCount > MAX_VIOLATIONS) {
+                // Auto-submit due to malpractice
+                setTimeout(() => handleSubmitTest('malpractice'), 1500);
+            }
+            return newCount;
+        });
+        setViolationMessage(`⚠️ ${message} (Warning ${violationCount + 1}/${MAX_VIOLATIONS})`);
+        setShowViolationWarning(true);
+        setTimeout(() => setShowViolationWarning(false), 4000);
+    }, [violationCount]);
+
+    // Proctoring: Start test with fullscreen
+    const handleStartTestWithFullscreen = useCallback(async () => {
+        try {
+            const elem = document.documentElement;
+            await elem.requestFullscreen?.();
+            setIsFullscreen(true);
+            setShowStartScreen(false);
+            setTestStarted(true);
+        } catch (err) {
+            console.error('Fullscreen failed:', err);
+            // Still start the test but show warning
+            setViolationMessage('⚠️ Fullscreen is required. Please enable fullscreen to continue.');
+            setShowViolationWarning(true);
+        }
+    }, []);
 
     // Fetch test data - only once
     useEffect(() => {
-        if (hasFetchedTest.current) return;
+        console.log('[Test] useEffect for fetch - hasFetchedTest.current:', hasFetchedTest.current, 'testId:', testId);
+
+        if (hasFetchedTest.current) {
+            console.log('[Test] Already fetched, skipping');
+            return;
+        }
         hasFetchedTest.current = true;
 
         const fetchTest = async () => {
+            // Mock data disabled - using real backend
+            const USE_MOCK_DATA = false;
+
+            if (USE_MOCK_DATA) {
+                console.log('[Test] Using mock data - bypassing backend');
+                setTestConfig({ id: 'mock', name: 'Mock Test', duration: 10, totalMarks: 15 });
+                setQuestions([
+                    { id: 'q1', qno: 1, section: 'QA', topic: 'Test', difficulty: 'medium', type: 'MCQ', question: 'What is 2+2?', options: [{ key: 'A', text: '3' }, { key: 'B', text: '4' }], marks: 3, negativeMarks: 1 },
+                ]);
+                setTotalSeconds(600);
+                setLoading(false);
+                return;
+            }
+
             if (!testId) {
+                console.log('[Test] No testId provided');
                 setError('No test ID provided. Please select a test first.');
                 setLoading(false);
                 return;
             }
 
+            console.log('[Test] Fetching test:', testId);
             try {
                 const result = await testService.getTestById(testId);
+                console.log('[Test] API result:', result);
 
                 if (result.success && result.test) {
                     setTestConfig(result.test);
@@ -79,6 +127,7 @@ function Test() {
                     setError(result.error || 'Failed to load test');
                 }
             } catch (err) {
+                console.error('[Test] Fetch error:', err);
                 setError(err.message);
             } finally {
                 setLoading(false);
@@ -88,25 +137,66 @@ function Test() {
         fetchTest();
     }, [testId]);
 
-    // Enter test mode - only once when test loads
+    // Enter test mode - DISABLED: This was causing Layout to change which remounts Test component
+    // The testConfig and questions are set, just start the test directly
+    // Proctoring: Event Listeners
     useEffect(() => {
-        if (testConfig && questions.length > 0 && !hasEnteredTestMode.current) {
-            hasEnteredTestMode.current = true;
-            enterTestMode();
+        if (!testStarted || showStartScreen || submitting) return;
 
-            // Enter fullscreen
-            enterFullscreen().then(() => {
-                setTestStarted(true);
-            }).catch(() => {
-                // Fullscreen failed, still start test
-                setTestStarted(true);
-            });
+        const handleFullscreenChange = () => {
+            if (!document.fullscreenElement) {
+                setIsFullscreen(false);
+                logViolation('fullscreen', 'Fullscreen exited');
+            } else {
+                setIsFullscreen(true);
+            }
+        };
+
+        const handleVisibilityChange = () => {
+            if (document.hidden) {
+                logViolation('tab_switch', 'Tab switched or window minimized');
+            }
+        };
+
+        const handleWindowBlur = () => {
+            // Only log if not already handled by visibility change
+            if (!document.hidden) {
+                logViolation('focus_lost', 'Window focus lost');
+            }
+        };
+
+        // Add listeners
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        window.addEventListener('blur', handleWindowBlur);
+
+        // Prevent context menu (right click)
+        const preventContextMenu = (e) => e.preventDefault();
+        document.addEventListener('contextmenu', preventContextMenu);
+
+        // Check fullscreen status on mount
+        if (!document.fullscreenElement) {
+            setIsFullscreen(false);
         }
 
         return () => {
-            if (hasEnteredTestMode.current) {
-                exitTestMode();
-            }
+            document.removeEventListener('fullscreenchange', handleFullscreenChange);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            window.removeEventListener('blur', handleWindowBlur);
+            document.removeEventListener('contextmenu', preventContextMenu);
+        };
+    }, [testStarted, showStartScreen, submitting, logViolation]);
+
+    // Initialize test but wait for user to start (for fullscreen)
+    useEffect(() => {
+        if (testConfig && questions.length > 0 && !hasEnteredTestMode.current) {
+            hasEnteredTestMode.current = true;
+            // setTestStarted(true); // Don't auto-start, wait for Start Screen interaction
+            console.log('[Test] Test loaded, waiting for user to start');
+        }
+
+        return () => {
+            // Cleanup
         };
     }, [testConfig, questions.length]);
 
@@ -242,13 +332,20 @@ function Test() {
             const result = await testService.submitTest(testId, responses, totalTime);
 
             if (result.success) {
+                // Ensure score is a primitive value (number) not an object
+                const scoreValue = typeof result.score === 'object' && result.score !== null
+                    ? result.score.obtained
+                    : result.score;
+
                 navigate('/analysis', {
                     state: {
                         attemptId: result.attemptId,
-                        score: result.score,
+                        score: scoreValue,
                         testName: testConfig.name,
                         totalMarks: testConfig.totalMarks,
                         responses: responses,
+                        // Pass full analysis if available
+                        analysis: typeof result.score === 'object' ? result.score : null
                     }
                 });
             } else {
@@ -326,6 +423,51 @@ function Test() {
         );
     }
 
+
+    // Start Screen (Proctoring)
+    if (showStartScreen && testConfig) {
+        return (
+            <div className="test-page test-page--start">
+                <div className="start-screen">
+                    <div className="start-screen__icon">
+                        <Icon name="shield" size={64} />
+                    </div>
+                    <h1>Proctored Test Mode</h1>
+                    <div className="start-screen__info">
+                        <div className="info-item">
+                            <Icon name="maximize" size={20} />
+                            <span>Fullscreen is required</span>
+                        </div>
+                        <div className="info-item">
+                            <Icon name="alertTriangle" size={20} />
+                            <span>Don't switch tabs or windows</span>
+                        </div>
+                        <div className="info-item">
+                            <Icon name="clock" size={20} />
+                            <span>{testConfig.duration} minutes duration</span>
+                        </div>
+                    </div>
+                    <div className="start-screen__warning">
+                        <p><strong>Warning:</strong> Switching tabs or exiting fullscreen will result in a warning.</p>
+                        <p>After {MAX_VIOLATIONS} warnings, the test will be auto-submitted.</p>
+                    </div>
+                    <button
+                        className="btn btn--primary btn--lg start-btn"
+                        onClick={handleStartTestWithFullscreen}
+                    >
+                        Start Test
+                    </button>
+                    <button
+                        className="btn btn--secondary btn--lg"
+                        onClick={() => navigate('/test')}
+                    >
+                        Back
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     if (!testConfig || questions.length === 0) {
         return (
             <div className="test-page test-page--error">
@@ -350,11 +492,12 @@ function Test() {
     return (
         <div className="test-page">
             <FocusWarning
-                show={showWarning}
-                message={warningMessage}
-                remainingAttempts={remainingAttempts}
-                onDismiss={() => { }}
+                show={showViolationWarning}
+                message={violationMessage}
+                remainingAttempts={MAX_VIOLATIONS - violationCount}
+                onDismiss={() => setShowViolationWarning(false)}
             />
+
 
             {/* Header */}
             <header className="test-header">
@@ -457,29 +600,63 @@ function Test() {
                     </div>
                 </div>
 
-                {/* Nav Panel */}
-                <div className="nav-panel">
-                    <h3>Question Palette</h3>
-                    <div className="nav-legend">
-                        <span><span className="dot answered"></span> Answered</span>
-                        <span><span className="dot marked"></span> Marked</span>
-                        <span><span className="dot unanswered"></span> Unanswered</span>
+                {/* Nav Panel - Enhanced Question Palette */}
+                <div className="nav-palette">
+                    <div className="nav-palette__header">
+                        <h3 className="nav-palette__title">Question Palette</h3>
+                        <button
+                            className="fullscreen-btn"
+                            onClick={() => {
+                                const elem = document.documentElement;
+                                if (document.fullscreenElement) {
+                                    document.exitFullscreen?.();
+                                } else {
+                                    elem.requestFullscreen?.();
+                                }
+                            }}
+                        >
+                            <Icon name="maximize" size={14} />
+                            {document.fullscreenElement ? 'Exit' : 'Fullscreen'}
+                        </button>
                     </div>
-                    <div className="question-palette">
+                    <div className="nav-legend">
+                        <span className="legend-item">
+                            <span className="legend-dot legend-dot--answered"></span> Answered
+                        </span>
+                        <span className="legend-item">
+                            <span className="legend-dot legend-dot--marked"></span> Marked
+                        </span>
+                        <span className="legend-item">
+                            <span className="legend-dot legend-dot--current"></span> Current
+                        </span>
+                        <span className="legend-item">
+                            <span className="legend-dot legend-dot--unanswered"></span> Unanswered
+                        </span>
+                    </div>
+                    <div className="question-grid">
                         {questions.map((_, index) => (
                             <button
                                 key={index}
-                                className={`palette-btn ${getQuestionStatus(index)}`}
+                                className={`question-btn question-btn--${getQuestionStatus(index)}`}
                                 onClick={() => goToQuestion(index)}
                             >
                                 {index + 1}
                             </button>
                         ))}
                     </div>
-                    <div className="nav-summary">
-                        <div><strong>{stats.answered}</strong> Answered</div>
-                        <div><strong>{stats.marked}</strong> Marked</div>
-                        <div><strong>{stats.pending}</strong> Pending</div>
+                    <div className="summary-stats">
+                        <div className="summary-stat summary-stat--answered">
+                            <div className="summary-stat__value">{stats.answered}</div>
+                            <div className="summary-stat__label">Answered</div>
+                        </div>
+                        <div className="summary-stat summary-stat--marked">
+                            <div className="summary-stat__value">{stats.marked}</div>
+                            <div className="summary-stat__label">Marked</div>
+                        </div>
+                        <div className="summary-stat summary-stat--pending">
+                            <div className="summary-stat__value">{stats.pending}</div>
+                            <div className="summary-stat__label">Pending</div>
+                        </div>
                     </div>
                     <button
                         className="btn btn--primary btn--lg submit-btn"

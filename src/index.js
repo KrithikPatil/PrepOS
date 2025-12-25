@@ -9,9 +9,8 @@ import './index.css';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
-  <React.StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
-  </React.StrictMode>
+  // Note: StrictMode removed temporarily - was causing issues with Test page
+  <BrowserRouter>
+    <App />
+  </BrowserRouter>
 );

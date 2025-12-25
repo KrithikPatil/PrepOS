@@ -19,6 +19,7 @@ export function useFocusMode({ onAutoSubmit, enabled = true }) {
     const [showWarning, setShowWarning] = useState(false);
     const [warningMessage, setWarningMessage] = useState('');
     const violationCountRef = useRef(0);
+    const isRetryingFullscreen = useRef(false);
 
     // Enter fullscreen mode
     const enterFullscreen = useCallback(async () => {
@@ -137,13 +138,16 @@ export function useFocusMode({ onAutoSubmit, enabled = true }) {
         setIsFullscreen(isCurrentlyFullscreen);
 
         // If exited fullscreen during test, log violation
-        if (!isCurrentlyFullscreen && violationCountRef.current < MAX_VIOLATIONS) {
+        if (!isCurrentlyFullscreen && violationCountRef.current < MAX_VIOLATIONS && !isRetryingFullscreen.current) {
             logViolation('fullscreen_exit', 'You exited fullscreen mode');
 
-            // Try to re-enter fullscreen
+            // Try to re-enter fullscreen (only once per exit)
+            isRetryingFullscreen.current = true;
             setTimeout(() => {
-                enterFullscreen();
-            }, 1000);
+                enterFullscreen().finally(() => {
+                    isRetryingFullscreen.current = false;
+                });
+            }, 2000);
         }
     }, [enabled, logViolation, enterFullscreen]);
 
@@ -164,14 +168,17 @@ export function useFocusMode({ onAutoSubmit, enabled = true }) {
         };
     }, [enabled, handleVisibilityChange, handleFullscreenChange, handleWindowBlur]);
 
-    // Cleanup on unmount
+    // Cleanup on unmount - use ref to avoid re-renders
+    const isFullscreenRef = useRef(isFullscreen);
+    isFullscreenRef.current = isFullscreen;
+
     useEffect(() => {
         return () => {
-            if (isFullscreen) {
+            if (isFullscreenRef.current) {
                 exitFullscreen();
             }
         };
-    }, [isFullscreen, exitFullscreen]);
+    }, []); // Empty deps - only run on unmount
 
     // Reset violations (for starting a new test)
     const resetViolations = useCallback(() => {

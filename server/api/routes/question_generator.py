@@ -97,49 +97,37 @@ async def generate_questions(config: GenerateRequest):
         }
     
     # Format samples for LLM context
-    sample_context = json.dumps(sample_questions, indent=2, default=str) if sample_questions else "No samples available"
+    # Take only 2 samples to keep prompt short
+    sample_context = json.dumps(sample_questions[:2], indent=2, default=str) if sample_questions else "[]"
     
-    # Build the generation prompt
-    prompt = f"""## TASK: Generate {config.count} NEW CAT practice questions
+    # Build a concise generation prompt
+    prompt = f"""Generate {config.count} CAT exam practice questions.
 
-### Requirements:
-- **Sections**: {', '.join(config.sections)}
-- **Topics to focus on**: {config.topics if config.topics else 'Any relevant CAT topics'}
-- **Difficulty**: {config.difficulty}
-- **Count**: {config.count} questions
+REQUIREMENTS:
+- Section(s): {', '.join(config.sections)}
+- Difficulty: {config.difficulty}
+- Include MCQ and TITA types
 
-### Include:
-- At least 1 TITA (Type In The Answer) question if count >= 3
-- Plausible wrong options that reflect common mistakes
-- Detailed step-by-step explanations
-
-### SAMPLE QUESTIONS FROM DATABASE (match this format and quality):
-
+EXAMPLE FORMAT:
 {sample_context}
 
----
-
-## GENERATE NEW QUESTIONS
-
-Create {config.count} new, original questions following the same JSON format as the samples.
-Each question MUST have:
-- id: Generate unique IDs like "GEN-001", "GEN-002", etc.
-- section: One of {config.sections}
-- topic: Specific topic name
-- difficulty: "{config.difficulty}"
-- type: "MCQ" or "TITA"
-- passage: null for non-RC questions, text for RC
-- question: Clear question text
-- options: Array of {{"key": "A", "text": "..."}} for MCQ, null for TITA
-- correctAnswer: "A"/"B"/"C"/"D" for MCQ, or the answer string for TITA
-- explanation: Detailed solution with concept explanation
-
-Return ONLY a valid JSON object:
+OUTPUT: Return valid JSON with this structure:
 {{
-    "generatedQuestions": {config.count},
-    "targetTopics": ["topic1", "topic2"],
-    "message": "Brief description of questions generated",
-    "questions": [...]
+  "questions": [
+    {{
+      "id": "GEN-001",
+      "section": "QA",
+      "topic": "Arithmetic",
+      "difficulty": "{config.difficulty}",
+      "type": "MCQ",
+      "passage": null,
+      "question": "Question text here",
+      "options": [{{"key": "A", "text": "Option A"}}, {{"key": "B", "text": "Option B"}}, {{"key": "C", "text": "Option C"}}, {{"key": "D", "text": "Option D"}}],
+      "correctAnswer": "A",
+      "explanation": "Solution explanation"
+    }}
+  ],
+  "message": "Generated {config.count} questions"
 }}"""
 
     try:
@@ -190,18 +178,35 @@ Return ONLY a valid JSON object:
         questions = result.get("questions", [])
         print(f"Questions extracted: {len(questions)} questions")
         
-        # If questions is empty but we have other keys, maybe the structure is different
+        # If questions is empty, check for parsing issues or alternative structures
         if not questions:
             print("⚠️ No 'questions' key found or empty. Checking alternative structures...")
+            
+            # Handle case where JSON parsing failed and we have raw_response
+            if "raw_response" in result:
+                print("  Found 'raw_response' - attempting to parse...")
+                raw = result.get("raw_response", "")
+                try:
+                    # Try to extract JSON from the raw response
+                    import re
+                    # Find JSON object in the response
+                    json_match = re.search(r'\{[\s\S]*\}', raw)
+                    if json_match:
+                        parsed = json.loads(json_match.group())
+                        questions = parsed.get("questions", [])
+                        print(f"  Successfully parsed raw_response: {len(questions)} questions")
+                except Exception as parse_err:
+                    print(f"  Failed to parse raw_response: {parse_err}")
+            
             # Try alternative keys
-            if "generated_questions" in result:
+            if not questions and "generated_questions" in result:
                 questions = result.get("generated_questions", [])
                 print(f"  Found 'generated_questions': {len(questions)}")
-            elif "data" in result and isinstance(result["data"], list):
+            elif not questions and "data" in result and isinstance(result["data"], list):
                 questions = result["data"]
                 print(f"  Found 'data': {len(questions)}")
             # Check if the whole result is an array
-            elif isinstance(result, list):
+            elif not questions and isinstance(result, list):
                 questions = result
                 print(f"  Result IS the questions array: {len(questions)}")
         
@@ -254,19 +259,63 @@ Return ONLY a valid JSON object:
                 logger.warning(f"Could not store questions in DB: {db_err}")
                 print(f"⚠️ Could not store questions in DB: {db_err}")
         
-        # Prepare response with proper format
-        response_questions = questions[:config.count]
-        print(f"📤 Returning {len(response_questions)} questions to frontend")
-        for i, q in enumerate(response_questions):
-            print(f"   Q{i+1}: {q.get('question', 'N/A')[:60]}...")
+        # Store generated questions in database and create a test
+        test_id = None
+        stored_question_ids = []
+        
+        if questions:
+            try:
+                from db.mongodb import get_tests_collection
+                questions_col = get_questions_collection()
+                tests_col = get_tests_collection()
+                
+                # Prepare questions for insertion (without the temp id)
+                questions_to_insert = []
+                for q in questions:
+                    q_copy = {k: v for k, v in q.items() if k != "id"}
+                    q_copy["generated"] = True
+                    q_copy["generatedAt"] = datetime.utcnow()
+                    q_copy["source"] = "ai_generated"
+                    questions_to_insert.append(q_copy)
+                
+                # Insert questions into database
+                insert_result = await questions_col.insert_many(questions_to_insert)
+                stored_question_ids = [str(id) for id in insert_result.inserted_ids]
+                print(f"💾 Stored {len(stored_question_ids)} questions in database")
+                print(f"   Question IDs: {stored_question_ids}")
+                
+                # Create a new test with these question IDs
+                test_name = f"AI Generated - {config.sections[0] if config.sections else 'Mixed'} - {datetime.now().strftime('%d %b %Y %H:%M')}"
+                test_doc = {
+                    "name": test_name,
+                    "type": "generated",
+                    "sections": config.sections,
+                    "difficulty": config.difficulty,
+                    "duration": len(questions) * 2,  # 2 minutes per question
+                    "questionIds": stored_question_ids,
+                    "questionCount": len(stored_question_ids),
+                    "createdAt": datetime.utcnow(),
+                    "source": "ai_generated"
+                }
+                
+                test_result = await tests_col.insert_one(test_doc)
+                test_id = str(test_result.inserted_id)
+                print(f"📝 Created test: {test_name}")
+                print(f"   Test ID: {test_id}")
+                
+            except Exception as db_err:
+                logger.warning(f"Could not store in DB: {db_err}")
+                print(f"⚠️ Could not store in DB: {db_err}")
         
         return {
             "success": True,
             "source": "ai_generated",
-            "count": len(response_questions),
+            "count": len(questions),
+            "questionIds": stored_question_ids,
+            "testId": test_id,
+            "testName": test_name if test_id else None,
             "targetTopics": result.get("targetTopics", config.topics or []),
-            "message": result.get("message", f"Generated {len(response_questions)} CAT-style questions"),
-            "questions": response_questions
+            "message": f"Successfully generated {len(questions)} questions and created a practice test!"
         }
             
     except Exception as e:
@@ -283,12 +332,11 @@ Return ONLY a valid JSON object:
         # Fallback to database samples
         print(f"📚 Falling back to {len(sample_questions)} database samples")
         return {
-            "success": True,
+            "success": False,
             "source": "fallback_database",
             "count": len(sample_questions),
             "ai_error": str(e),
-            "message": f"AI generation failed, returning sample questions from database",
-            "questions": sample_questions[:config.count]
+            "message": f"AI generation failed: {str(e)[:100]}"
         }
 
 

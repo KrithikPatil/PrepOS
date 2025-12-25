@@ -29,23 +29,22 @@ export const questionService = {
             console.log('   - success:', result.success);
             console.log('   - source:', result.source);
             console.log('   - count:', result.count);
-            console.log('   - questions array:', result.questions);
-
-            if (result.questions && result.questions.length > 0) {
-                console.log('   - First question:', result.questions[0]);
-            }
+            console.log('   - testId:', result.testId);
+            console.log('   - testName:', result.testName);
 
             return {
-                success: true,
+                success: result.success !== false,
                 source: result.source,
-                count: result.count,
-                questions: result.questions || [],
+                count: result.count || 0,
+                testId: result.testId,
+                testName: result.testName,
+                questionIds: result.questionIds || [],
                 message: result.message || 'Questions generated successfully',
                 targetTopics: result.targetTopics || []
             };
         } catch (error) {
             console.error('❌ Failed to generate questions:', error);
-            return { success: false, error: error.message, questions: [] };
+            return { success: false, error: error.message };
         }
     },
 

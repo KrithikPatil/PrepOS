@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { questionService } from '../../services';
 import Icon from '../../components/Icon/Icon';
 import './QuestionGenerator.css';
@@ -8,6 +9,8 @@ import './QuestionGenerator.css';
  * Generate personalized practice questions using AI Architect Agent
  */
 function QuestionGenerator() {
+    const navigate = useNavigate();
+
     // Configuration state
     const [selectedSections, setSelectedSections] = useState(['QA']);
     const [selectedTopics, setSelectedTopics] = useState([]);
@@ -17,14 +20,11 @@ function QuestionGenerator() {
 
     // Data state
     const [availableTopics, setAvailableTopics] = useState({});
-    const [questions, setQuestions] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [source, setSource] = useState(null);
 
-    // UI state
-    const [expandedQuestion, setExpandedQuestion] = useState(null);
-    const [showAnswers, setShowAnswers] = useState({});
+    // Result state
+    const [generationResult, setGenerationResult] = useState(null);
 
     // Fetch available topics on mount
     useEffect(() => {
@@ -56,7 +56,6 @@ function QuestionGenerator() {
             }
             return [...prev, sectionId];
         });
-        // Reset topics when section changes
         setSelectedTopics([]);
     };
 
@@ -77,7 +76,7 @@ function QuestionGenerator() {
 
         setLoading(true);
         setError(null);
-        setQuestions([]);
+        setGenerationResult(null);
 
         console.log('🚀 Starting question generation...');
         const result = await questionService.generateQuestions({
@@ -92,21 +91,29 @@ function QuestionGenerator() {
         setLoading(false);
 
         if (result.success) {
-            console.log('✅ Setting questions:', result.questions);
-            console.log('   Questions length:', result.questions?.length);
-            setQuestions(result.questions);
-            setSource(result.source);
+            console.log('✅ Generation successful:', result);
+            setGenerationResult({
+                success: true,
+                count: result.count,
+                testId: result.testId,
+                testName: result.testName,
+                message: result.message,
+                source: result.source
+            });
         } else {
             console.error('❌ Generation failed:', result.error);
-            setError(result.error || 'Failed to generate questions');
+            setError(result.error || result.message || 'Failed to generate questions');
         }
     };
 
-    const toggleAnswer = (questionId) => {
-        setShowAnswers(prev => ({
-            ...prev,
-            [questionId]: !prev[questionId]
-        }));
+    const handleStartTest = () => {
+        if (generationResult?.testId) {
+            navigate(`/test/start?testId=${generationResult.testId}`);
+        }
+    };
+
+    const handleGenerateMore = () => {
+        setGenerationResult(null);
     };
 
     const getAvailableTopicsForSections = () => {
@@ -117,20 +124,6 @@ function QuestionGenerator() {
             }
         });
         return [...new Set(topics)];
-    };
-
-    const getDifficultyColor = (diff) => {
-        switch (diff) {
-            case 'easy': return '#10b981';
-            case 'medium': return '#f59e0b';
-            case 'hard': return '#ef4444';
-            default: return '#6b7280';
-        }
-    };
-
-    const getSectionColor = (section) => {
-        const sec = sections.find(s => s.id === section);
-        return sec ? sec.color : '#6b7280';
     };
 
     return (
@@ -157,6 +150,7 @@ function QuestionGenerator() {
                                     className={`section-btn ${selectedSections.includes(section.id) ? 'active' : ''}`}
                                     style={{ '--section-color': section.color }}
                                     onClick={() => handleSectionToggle(section.id)}
+                                    disabled={loading || generationResult}
                                 >
                                     <span className="section-name">{section.name}</span>
                                     <span className="section-full">{section.fullName}</span>
@@ -173,6 +167,7 @@ function QuestionGenerator() {
                                     key={topic}
                                     className={`topic-chip ${selectedTopics.includes(topic) ? 'active' : ''}`}
                                     onClick={() => handleTopicToggle(topic)}
+                                    disabled={loading || generationResult}
                                 >
                                     {topic}
                                 </button>
@@ -191,6 +186,7 @@ function QuestionGenerator() {
                                     key={diff.id}
                                     className={`difficulty-btn ${difficulty === diff.id ? 'active' : ''}`}
                                     onClick={() => setDifficulty(diff.id)}
+                                    disabled={loading || generationResult}
                                 >
                                     <span className="diff-name">{diff.name}</span>
                                     <span className="diff-desc">{diff.description}</span>
@@ -207,6 +203,7 @@ function QuestionGenerator() {
                                     key={count}
                                     className={`count-btn ${questionCount === count ? 'active' : ''}`}
                                     onClick={() => setQuestionCount(count)}
+                                    disabled={loading || generationResult}
                                 >
                                     {count}
                                 </button>
@@ -220,6 +217,7 @@ function QuestionGenerator() {
                                 type="checkbox"
                                 checked={useAI}
                                 onChange={(e) => setUseAI(e.target.checked)}
+                                disabled={loading || generationResult}
                             />
                             <span className="toggle-label">
                                 <Icon name="robot" size={16} />
@@ -231,23 +229,25 @@ function QuestionGenerator() {
                         </label>
                     </div>
 
-                    <button
-                        className="generate-btn"
-                        onClick={handleGenerate}
-                        disabled={loading || selectedSections.length === 0}
-                    >
-                        {loading ? (
-                            <>
-                                <span className="loading-spinner"></span>
-                                Generating...
-                            </>
-                        ) : (
-                            <>
-                                <Icon name="zap" size={20} />
-                                Generate Questions
-                            </>
-                        )}
-                    </button>
+                    {!generationResult && (
+                        <button
+                            className="generate-btn"
+                            onClick={handleGenerate}
+                            disabled={loading || selectedSections.length === 0}
+                        >
+                            {loading ? (
+                                <>
+                                    <span className="loading-spinner"></span>
+                                    Generating...
+                                </>
+                            ) : (
+                                <>
+                                    <Icon name="zap" size={20} />
+                                    Generate Questions
+                                </>
+                            )}
+                        </button>
+                    )}
 
                     {error && (
                         <div className="error-message">
@@ -257,9 +257,9 @@ function QuestionGenerator() {
                     )}
                 </aside>
 
-                {/* Questions Panel */}
+                {/* Results Panel */}
                 <main className="qg-questions">
-                    {questions.length === 0 && !loading && (
+                    {!generationResult && !loading && (
                         <div className="empty-state">
                             <Icon name="clipboard" size={64} />
                             <h2>No Questions Yet</h2>
@@ -280,90 +280,49 @@ function QuestionGenerator() {
                         </div>
                     )}
 
-                    {questions.length > 0 && (
-                        <>
-                            <div className="questions-header">
-                                <h2>Generated Questions</h2>
-                                <span className="source-badge">
-                                    {source === 'ai_generated' ? '🤖 AI Generated' : '📚 Sample Data'}
-                                </span>
+                    {generationResult && (
+                        <div className="success-state">
+                            <div className="success-icon">
+                                <Icon name="check" size={64} />
+                            </div>
+                            <h2>Questions Generated Successfully! 🎉</h2>
+                            <p className="success-message">{generationResult.message}</p>
+
+                            <div className="result-details">
+                                <div className="result-stat">
+                                    <span className="stat-value">{generationResult.count}</span>
+                                    <span className="stat-label">Questions Created</span>
+                                </div>
+                                <div className="result-stat">
+                                    <span className="stat-value">{selectedSections.join(', ')}</span>
+                                    <span className="stat-label">Sections</span>
+                                </div>
+                                <div className="result-stat">
+                                    <span className="stat-value">{difficulty}</span>
+                                    <span className="stat-label">Difficulty</span>
+                                </div>
                             </div>
 
-                            <div className="questions-list">
-                                {questions.map((q, index) => (
-                                    <div key={q.id || index} className="question-card">
-                                        <div className="question-header">
-                                            <span className="q-number">Q{index + 1}</span>
-                                            <div className="q-badges">
-                                                <span
-                                                    className="badge section-badge"
-                                                    style={{ backgroundColor: getSectionColor(q.section) }}
-                                                >
-                                                    {q.section}
-                                                </span>
-                                                <span className="badge topic-badge">{q.topic}</span>
-                                                <span
-                                                    className="badge diff-badge"
-                                                    style={{ color: getDifficultyColor(q.difficulty) }}
-                                                >
-                                                    {q.difficulty}
-                                                </span>
-                                                {q.type === 'TITA' && (
-                                                    <span className="badge tita-badge">TITA</span>
-                                                )}
-                                            </div>
-                                        </div>
+                            {generationResult.testName && (
+                                <div className="test-info">
+                                    <Icon name="book" size={20} />
+                                    <span>Test Created: <strong>{generationResult.testName}</strong></span>
+                                </div>
+                            )}
 
-                                        {q.passage && (
-                                            <div className="question-passage">
-                                                <p>{q.passage}</p>
-                                            </div>
-                                        )}
-
-                                        <div className="question-text">
-                                            <p>{q.question}</p>
-                                        </div>
-
-                                        {q.options && (
-                                            <div className="question-options">
-                                                {q.options.map((opt, optIdx) => (
-                                                    <div
-                                                        key={opt.key || optIdx}
-                                                        className={`option ${showAnswers[q.id] && opt.key === q.correctAnswer ? 'correct' : ''}`}
-                                                    >
-                                                        <span className="option-key">{opt.key || String.fromCharCode(65 + optIdx)}</span>
-                                                        <span className="option-text">{opt.text}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-
-                                        <div className="question-actions">
-                                            <button
-                                                className="show-answer-btn"
-                                                onClick={() => toggleAnswer(q.id)}
-                                            >
-                                                {showAnswers[q.id] ? 'Hide Answer' : 'Show Answer'}
-                                            </button>
-                                        </div>
-
-                                        {showAnswers[q.id] && (
-                                            <div className="question-answer">
-                                                <div className="correct-answer">
-                                                    <strong>Correct Answer:</strong> {q.correctAnswer}
-                                                </div>
-                                                {q.explanation && (
-                                                    <div className="explanation">
-                                                        <strong>Explanation:</strong>
-                                                        <p>{q.explanation}</p>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
+                            <div className="success-actions">
+                                {generationResult.testId && (
+                                    <button className="primary-btn" onClick={handleStartTest}>
+                                        <Icon name="play" size={20} />
+                                        Start Practice Test
+                                    </button>
+                                )}
+                                <button className="secondary-btn" onClick={handleGenerateMore}>
+                                    <Icon name="zap" size={20} />
+                                    Generate More Questions
+                                </button>
                             </div>
-                        </>
+                        </div>
                     )}
                 </main>
             </div>
