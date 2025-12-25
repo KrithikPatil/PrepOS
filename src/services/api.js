@@ -4,7 +4,7 @@
  * Connected to FastAPI backend
  */
 
-const API_URL = process.env.REACT_APP_API_URL || 'https://prepos.onrender.com/api';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 const TOKEN_KEY = 'prepos_token';
 
 /**

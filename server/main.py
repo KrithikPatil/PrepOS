@@ -54,7 +54,7 @@ app.add_middleware(SessionMiddleware, secret_key=settings.jwt_secret)
 # CORS middleware for React frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "https://prepos-frontend.onrender.com", settings.frontend_url],
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", settings.frontend_url],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
