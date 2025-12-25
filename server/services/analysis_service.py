@@ -178,8 +178,12 @@ async def run_analysis_pipeline(attempt_id: str, attempt: dict, user_id: str):
             # Add User ID to document for easy fetching
             strat_result["userId"] = ObjectId(user_id)
             
-            # Save to standard Roadmaps collection
-            await roadmap_col.insert_one(strat_result)
+            # Upsert to Roadmaps collection (one roadmap per user, updated each analysis)
+            await roadmap_col.update_one(
+                {"userId": ObjectId(user_id)},
+                {"$set": strat_result},
+                upsert=True
+            )
             
         analysis_jobs[job_id]["agents"]["strategist"] = {"status": "completed", "output": strat_result}
         

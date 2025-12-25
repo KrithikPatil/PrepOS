@@ -79,8 +79,13 @@ export const studentService = {
      */
     getRoadmap: async () => {
         try {
-            const roadmap = await api.get('/students/roadmap');
-            return { success: true, roadmap };
+            const result = await api.get('/students/roadmap');
+            // Backend returns { success, roadmap } or { success: false, message }
+            if (result.success && result.roadmap) {
+                return { success: true, roadmap: result.roadmap };
+            } else {
+                return { success: false, error: result.message || 'No roadmap available', roadmap: null };
+            }
         } catch (error) {
             console.error('Failed to get roadmap:', error);
             return { success: false, error: error.message, roadmap: null };
