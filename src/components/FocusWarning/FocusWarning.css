@@ -1,0 +1,115 @@
+.focus-warning {
+    position: fixed;
+    top: var(--spacing-xl);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    background: var(--bg-card);
+    border: 1px solid var(--accent-warning);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xl), 0 0 30px rgba(245, 158, 11, 0.2);
+    overflow: hidden;
+    animation: slideInDown var(--transition-spring) forwards;
+    min-width: 400px;
+    max-width: 90vw;
+}
+
+.focus-warning--critical {
+    border-color: var(--accent-danger);
+    box-shadow: var(--shadow-xl), 0 0 30px rgba(239, 68, 68, 0.3);
+}
+
+.focus-warning__content {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-lg);
+}
+
+.focus-warning__icon {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-md);
+    background: rgba(245, 158, 11, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.focus-warning--critical .focus-warning__icon {
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.focus-warning__text {
+    flex: 1;
+}
+
+.focus-warning__message {
+    font-size: var(--font-size-base);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-xs);
+}
+
+.focus-warning__attempts {
+    font-size: var(--font-size-sm);
+    color: var(--accent-warning);
+    font-weight: 500;
+}
+
+.focus-warning--critical .focus-warning__attempts {
+    color: var(--accent-danger);
+}
+
+.focus-warning__dismiss {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-md);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    transition: all var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.focus-warning__dismiss:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--border-medium);
+    color: var(--text-primary);
+}
+
+.focus-warning__progress {
+    height: 3px;
+    background: var(--accent-warning);
+    animation: progressShrink 5s linear forwards;
+}
+
+.focus-warning--critical .focus-warning__progress {
+    background: var(--accent-danger);
+}
+
+@keyframes progressShrink {
+    from {
+        width: 100%;
+    }
+
+    to {
+        width: 0%;
+    }
+}
+
+@keyframes slideInDown {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}

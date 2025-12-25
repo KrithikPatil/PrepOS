@@ -2,51 +2,53 @@
 
 /* ============================================
    PrepOS Design System - CSS Custom Properties
+   Premium Light Theme
    ============================================ */
 
 :root {
-  /* Color Palette - Dark Mode Default */
-  --bg-primary: #0a0a0f;
-  --bg-secondary: #12121a;
-  --bg-tertiary: #1a1a25;
-  --bg-card: rgba(26, 26, 37, 0.8);
-  --bg-card-hover: rgba(35, 35, 50, 0.9);
-  --bg-glass: rgba(255, 255, 255, 0.03);
-  
-  /* Text Colors */
-  --text-primary: #ffffff;
-  --text-secondary: #a0a0b0;
-  --text-muted: #6b6b7b;
-  --text-accent: #8b8bff;
-  
-  /* Accent Colors */
+  /* Color Palette - Light Theme */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-tertiary: #f1f5f9;
+  --bg-card: rgba(255, 255, 255, 0.95);
+  --bg-card-hover: rgba(248, 250, 252, 1);
+  --bg-glass: rgba(241, 245, 249, 0.8);
+
+  /* Text Colors - Optimized for light backgrounds */
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --text-accent: #6366f1;
+
+  /* Accent Colors - Refined for light theme */
   --accent-primary: #6366f1;
-  --accent-primary-hover: #818cf8;
-  --accent-secondary: #22d3ee;
+  --accent-primary-hover: #4f46e5;
+  --accent-secondary: #0ea5e9;
   --accent-success: #10b981;
   --accent-warning: #f59e0b;
   --accent-danger: #ef4444;
   --accent-info: #3b82f6;
-  
+
   /* Gradient Definitions */
   --gradient-primary: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-  --gradient-secondary: linear-gradient(135deg, #22d3ee 0%, #6366f1 100%);
-  --gradient-success: linear-gradient(135deg, #10b981 0%, #22d3ee 100%);
-  --gradient-card: linear-gradient(145deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.05) 100%);
-  --gradient-glow: radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.15) 0%, transparent 70%);
-  
-  /* Borders */
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-medium: rgba(255, 255, 255, 0.12);
-  --border-accent: rgba(99, 102, 241, 0.5);
-  
-  /* Shadows */
-  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
-  --shadow-glow: 0 0 40px rgba(99, 102, 241, 0.2);
-  --shadow-glow-sm: 0 0 20px rgba(99, 102, 241, 0.15);
-  
+  --gradient-secondary: linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%);
+  --gradient-success: linear-gradient(135deg, #10b981 0%, #0ea5e9 100%);
+  --gradient-card: linear-gradient(145deg, rgba(99, 102, 241, 0.04) 0%, rgba(139, 92, 246, 0.02) 100%);
+  --gradient-glow: radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.08) 0%, transparent 70%);
+
+  /* Borders - Subtle for light theme */
+  --border-subtle: rgba(15, 23, 42, 0.06);
+  --border-medium: rgba(15, 23, 42, 0.1);
+  --border-accent: rgba(99, 102, 241, 0.3);
+
+  /* Shadows - Refined for depth on light backgrounds */
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 4px 6px rgba(15, 23, 42, 0.04), 0 2px 4px rgba(15, 23, 42, 0.06);
+  --shadow-lg: 0 10px 15px rgba(15, 23, 42, 0.06), 0 4px 6px rgba(15, 23, 42, 0.04);
+  --shadow-xl: 0 20px 25px rgba(15, 23, 42, 0.08), 0 8px 10px rgba(15, 23, 42, 0.04);
+  --shadow-glow: 0 0 40px rgba(99, 102, 241, 0.15);
+  --shadow-glow-sm: 0 0 20px rgba(99, 102, 241, 0.1);
+
   /* Typography */
   --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-size-xs: 0.75rem;
@@ -57,7 +59,7 @@
   --font-size-2xl: 1.5rem;
   --font-size-3xl: 2rem;
   --font-size-4xl: 2.5rem;
-  
+
   /* Spacing */
   --spacing-xs: 0.25rem;
   --spacing-sm: 0.5rem;
@@ -66,19 +68,20 @@
   --spacing-xl: 2rem;
   --spacing-2xl: 3rem;
   --spacing-3xl: 4rem;
-  
+
   /* Border Radius */
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 16px;
   --radius-xl: 24px;
   --radius-full: 9999px;
-  
+
   /* Transitions */
   --transition-fast: 150ms ease;
   --transition-base: 250ms ease;
   --transition-slow: 400ms ease;
-  
+  --transition-spring: 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+
   /* Layout */
   --sidebar-width: 260px;
   --header-height: 64px;
@@ -88,7 +91,9 @@
    CSS Reset & Base Styles
    ============================================ */
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -126,7 +131,9 @@ button {
   background: none;
 }
 
-input, textarea, select {
+input,
+textarea,
+select {
   font-family: inherit;
   font-size: inherit;
 }
@@ -136,7 +143,8 @@ img {
   display: block;
 }
 
-ul, ol {
+ul,
+ol {
   list-style: none;
 }
 
@@ -145,8 +153,13 @@ ul, ol {
    ============================================ */
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes fadeInUp {
@@ -154,6 +167,7 @@ ul, ol {
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -165,6 +179,7 @@ ul, ol {
     opacity: 0;
     transform: translateY(-20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -176,6 +191,7 @@ ul, ol {
     opacity: 0;
     transform: translateX(-30px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -187,6 +203,7 @@ ul, ol {
     opacity: 0;
     transform: translateX(30px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -194,13 +211,25 @@ ul, ol {
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes ripple {
@@ -208,6 +237,7 @@ ul, ol {
     transform: scale(0);
     opacity: 0.5;
   }
+
   100% {
     transform: scale(4);
     opacity: 0;
@@ -215,9 +245,12 @@ ul, ol {
 }
 
 @keyframes glow {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
   }
+
   50% {
     box-shadow: 0 0 40px rgba(99, 102, 241, 0.5);
   }
@@ -227,15 +260,19 @@ ul, ol {
   0% {
     background-position: -200% 0;
   }
+
   100% {
     background-position: 200% 0;
   }
 }
 
 @keyframes float {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateY(0);
   }
+
   50% {
     transform: translateY(-10px);
   }
@@ -245,15 +282,41 @@ ul, ol {
    Utility Classes
    ============================================ */
 
-.animate-fadeIn { animation: fadeIn var(--transition-base) forwards; }
-.animate-fadeInUp { animation: fadeInUp var(--transition-slow) forwards; }
-.animate-fadeInDown { animation: fadeInDown var(--transition-slow) forwards; }
-.animate-slideInLeft { animation: slideInLeft var(--transition-slow) forwards; }
-.animate-slideInRight { animation: slideInRight var(--transition-slow) forwards; }
-.animate-pulse { animation: pulse 2s ease-in-out infinite; }
-.animate-spin { animation: spin 1s linear infinite; }
-.animate-glow { animation: glow 2s ease-in-out infinite; }
-.animate-float { animation: float 3s ease-in-out infinite; }
+.animate-fadeIn {
+  animation: fadeIn var(--transition-base) forwards;
+}
+
+.animate-fadeInUp {
+  animation: fadeInUp var(--transition-slow) forwards;
+}
+
+.animate-fadeInDown {
+  animation: fadeInDown var(--transition-slow) forwards;
+}
+
+.animate-slideInLeft {
+  animation: slideInLeft var(--transition-slow) forwards;
+}
+
+.animate-slideInRight {
+  animation: slideInRight var(--transition-slow) forwards;
+}
+
+.animate-pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+.animate-glow {
+  animation: glow 2s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
 
 .text-gradient {
   background: var(--gradient-primary);
@@ -286,23 +349,24 @@ ul, ol {
   border: 0;
 }
 
-/* Scrollbar Styling */
+/* Scrollbar Styling - Light Theme */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--bg-secondary);
+  background: var(--bg-tertiary);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--bg-tertiary);
+  background: var(--border-medium);
   border-radius: var(--radius-full);
+  transition: background var(--transition-fast);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(99, 102, 241, 0.5);
+  background: var(--accent-primary);
 }
 
 /* Focus Styles */
@@ -313,6 +377,131 @@ ul, ol {
 
 /* Selection Styling */
 ::selection {
-  background: rgba(99, 102, 241, 0.3);
+  background: rgba(99, 102, 241, 0.2);
   color: var(--text-primary);
+}
+
+/* ============================================
+   Premium SaaS Hover Effects
+   ============================================ */
+
+/* Card Lift Effect */
+.hover-lift {
+  transition: transform var(--transition-base),
+    box-shadow var(--transition-base),
+    border-color var(--transition-base);
+}
+
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--border-medium);
+}
+
+/* Premium Card with Glow */
+.hover-glow {
+  transition: all var(--transition-base);
+}
+
+.hover-glow:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg), var(--shadow-glow-sm);
+  border-color: var(--accent-primary);
+}
+
+/* Interactive Scale Effect */
+.hover-scale {
+  transition: transform var(--transition-spring);
+}
+
+.hover-scale:hover {
+  transform: scale(1.02);
+}
+
+.hover-scale:active {
+  transform: scale(0.98);
+}
+
+/* Button Shine Effect */
+.btn-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-shine::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg,
+      transparent,
+      rgba(255, 255, 255, 0.3),
+      transparent);
+  transition: left 0.5s ease;
+}
+
+.btn-shine:hover::before {
+  left: 100%;
+}
+
+/* Link Underline Animation */
+.link-underline {
+  position: relative;
+  display: inline-block;
+}
+
+.link-underline::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: var(--accent-primary);
+  transition: width var(--transition-base);
+}
+
+.link-underline:hover::after {
+  width: 100%;
+}
+
+/* Subtle Background Shift */
+.hover-bg {
+  transition: background-color var(--transition-fast);
+}
+
+.hover-bg:hover {
+  background-color: var(--bg-tertiary);
+}
+
+/* Border Accent on Hover */
+.hover-border {
+  transition: border-color var(--transition-fast);
+}
+
+.hover-border:hover {
+  border-color: var(--accent-primary);
+}
+
+/* Icon Rotate on Hover */
+.hover-icon-rotate .icon {
+  transition: transform var(--transition-base);
+}
+
+.hover-icon-rotate:hover .icon {
+  transform: rotate(15deg);
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

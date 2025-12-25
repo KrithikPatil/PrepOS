@@ -1,33 +1,86 @@
+# ================================
+# PrepOS - Git Ignore
+# ================================
+
+# ================================
 # Dependencies
+# ================================
 node_modules/
 /.pnp
 .pnp.js
 
-# Testing
-/coverage
+# ================================
+# Python / Backend
+# ================================
+server/venv/
+server/__pycache__/
+server/**/__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.eggs/
+*.egg-info/
+*.egg
 
-# Production build
-/build
-
-# Misc
-.DS_Store
+# ================================
+# Environment Files (SECRETS!)
+# ================================
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+server/.env
 
+# ================================
+# Build / Production
+# ================================
+/build
+/dist
+*.build/
+
+# ================================
+# Testing / Coverage
+# ================================
+/coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ================================
 # Logs
+# ================================
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+*.log
 
-# Editor directories and files
+# ================================
+# Editor / IDE
+# ================================
 .idea/
 .vscode/
 *.swp
 *.swo
 *~
+*.sublime-project
+*.sublime-workspace
 
-# OS generated files
+# ================================
+# OS Generated Files
+# ================================
+.DS_Store
 Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ================================
+# Misc
+# ================================
+*.bak
+*.tmp
+*.temp
+.cache/

@@ -1,47 +1,124 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { mockTestQuestions, mockTestConfig } from '../../services/mockData';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { testService } from '../../services';
+import useFocusMode from '../../hooks/useFocusMode';
+import FocusWarning from '../../components/FocusWarning/FocusWarning';
+import { useTestMode } from '../../contexts/TestModeContext';
+import Icon from '../../components/Icon/Icon';
 import './Test.css';
 
 /**
- * Test Page Component - Mock Test Interface
- * Premium dark mode UI with question navigation and timer
- * 
- * MANDATORY FILE: This is the primary entry screen for Mock Tests
- * This file is located at src/pages/Test/Test.js
- * 
- * TODO: Fetch questions from GET /api/test/:testId/questions
- * TODO: Submit answers to POST /api/test/:testId/submit
- * TODO: Track analytics for timeSpentPerQuestion
+ * Test Page Component - CAT Mock Test Interface
+ * Fetches questions from real API and submits to backend
  */
 function Test() {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const testId = searchParams.get('testId');
+
+    // Refs to prevent infinite loops
+    const hasEnteredTestMode = useRef(false);
+    const hasFetchedTest = useRef(false);
+
+    // Test data state
+    const [testConfig, setTestConfig] = useState(null);
+    const [questions, setQuestions] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [submitting, setSubmitting] = useState(false);
 
     // Test state
-    const [questions, setQuestions] = useState([]);
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [selectedOptions, setSelectedOptions] = useState({});
+    const [titaAnswers, setTitaAnswers] = useState({});
     const [markedForReview, setMarkedForReview] = useState({});
     const [timeSpentPerQuestion, setTimeSpentPerQuestion] = useState({});
     const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [testStarted, setTestStarted] = useState(false);
 
     // Timer state
-    const [totalSeconds, setTotalSeconds] = useState(mockTestConfig.duration * 60);
+    const [totalSeconds, setTotalSeconds] = useState(0);
     const [lastQuestionTime, setLastQuestionTime] = useState(Date.now());
 
-    // Initialize questions
+    // Get test mode context
+    const { enterTestMode, exitTestMode } = useTestMode();
+
+    // Focus Mode
+    const {
+        showWarning,
+        warningMessage,
+        remainingAttempts,
+        enterFullscreen,
+    } = useFocusMode({
+        onAutoSubmit: (reason) => {
+            handleSubmitTest(reason);
+        },
+        enabled: testStarted
+    });
+
+    // Fetch test data - only once
     useEffect(() => {
-        // TODO: Fetch from /api/test/:testId/questions
-        setQuestions(mockTestQuestions);
-    }, []);
+        if (hasFetchedTest.current) return;
+        hasFetchedTest.current = true;
+
+        const fetchTest = async () => {
+            if (!testId) {
+                setError('No test ID provided. Please select a test first.');
+                setLoading(false);
+                return;
+            }
+
+            try {
+                const result = await testService.getTestById(testId);
+
+                if (result.success && result.test) {
+                    setTestConfig(result.test);
+                    setQuestions(result.questions || []);
+                    setTotalSeconds(result.test.duration * 60);
+                } else {
+                    setError(result.error || 'Failed to load test');
+                }
+            } catch (err) {
+                setError(err.message);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchTest();
+    }, [testId]);
+
+    // Enter test mode - only once when test loads
+    useEffect(() => {
+        if (testConfig && questions.length > 0 && !hasEnteredTestMode.current) {
+            hasEnteredTestMode.current = true;
+            enterTestMode();
+
+            // Enter fullscreen
+            enterFullscreen().then(() => {
+                setTestStarted(true);
+            }).catch(() => {
+                // Fullscreen failed, still start test
+                setTestStarted(true);
+            });
+        }
+
+        return () => {
+            if (hasEnteredTestMode.current) {
+                exitTestMode();
+            }
+        };
+    }, [testConfig, questions.length]);
 
     // Timer countdown
     useEffect(() => {
+        if (!testStarted || totalSeconds <= 0) return;
+
         const timer = setInterval(() => {
             setTotalSeconds((prev) => {
-                if (prev <= 0) {
+                if (prev <= 1) {
                     clearInterval(timer);
-                    handleSubmitTest();
+                    handleSubmitTest('time_up');
                     return 0;
                 }
                 return prev - 1;
@@ -49,9 +126,9 @@ function Test() {
         }, 1000);
 
         return () => clearInterval(timer);
-    }, []);
+    }, [testStarted]);
 
-    // Track time spent on current question
+    // Track time spent
     const trackTimeSpent = useCallback(() => {
         const currentTime = Date.now();
         const timeSpent = Math.round((currentTime - lastQuestionTime) / 1000);
@@ -64,7 +141,6 @@ function Test() {
         setLastQuestionTime(currentTime);
     }, [currentQuestionIndex, lastQuestionTime]);
 
-    // Format time display
     const formatTime = (seconds) => {
         const hrs = Math.floor(seconds / 3600);
         const mins = Math.floor((seconds % 3600) / 60);
@@ -76,15 +152,14 @@ function Test() {
         return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
     };
 
-    // Get timer status for styling
     const getTimerStatus = () => {
-        const totalDuration = mockTestConfig.duration * 60;
-        if (totalSeconds <= 300) return 'danger'; // Last 5 minutes
-        if (totalSeconds <= totalDuration * 0.1) return 'warning'; // Last 10%
+        if (!testConfig) return 'normal';
+        const totalDuration = testConfig.duration * 60;
+        if (totalSeconds <= 300) return 'danger';
+        if (totalSeconds <= totalDuration * 0.1) return 'warning';
         return 'normal';
     };
 
-    // Handle option selection
     const handleOptionSelect = (optionKey) => {
         setSelectedOptions((prev) => ({
             ...prev,
@@ -92,13 +167,18 @@ function Test() {
         }));
     };
 
-    // Navigate to question
+    const handleTitaInput = (value) => {
+        setTitaAnswers((prev) => ({
+            ...prev,
+            [currentQuestionIndex]: value,
+        }));
+    };
+
     const goToQuestion = (index) => {
         trackTimeSpent();
         setCurrentQuestionIndex(index);
     };
 
-    // Navigation handlers
     const handleNext = () => {
         if (currentQuestionIndex < questions.length - 1) {
             goToQuestion(currentQuestionIndex + 1);
@@ -111,14 +191,10 @@ function Test() {
         }
     };
 
-    // Save and next
     const handleSaveAndNext = () => {
-        if (selectedOptions[currentQuestionIndex]) {
-            handleNext();
-        }
+        handleNext();
     };
 
-    // Mark for review
     const handleMarkForReview = () => {
         setMarkedForReview((prev) => ({
             ...prev,
@@ -127,40 +203,69 @@ function Test() {
         handleNext();
     };
 
-    // Clear response
     const handleClearResponse = () => {
-        setSelectedOptions((prev) => {
-            const updated = { ...prev };
-            delete updated[currentQuestionIndex];
-            return updated;
-        });
+        const currentQ = questions[currentQuestionIndex];
+        if (currentQ?.type === 'TITA') {
+            setTitaAnswers((prev) => {
+                const updated = { ...prev };
+                delete updated[currentQuestionIndex];
+                return updated;
+            });
+        } else {
+            setSelectedOptions((prev) => {
+                const updated = { ...prev };
+                delete updated[currentQuestionIndex];
+                return updated;
+            });
+        }
     };
 
-    // Submit test
-    const handleSubmitTest = () => {
+    const handleSubmitTest = async (reason = 'manual') => {
+        if (submitting) return;
+        setSubmitting(true);
         trackTimeSpent();
 
-        // TODO: Submit to POST /api/test/:testId/submit
-        const submissionData = {
-            answers: selectedOptions,
-            timeSpentPerQuestion,
-            totalTimeTaken: mockTestConfig.duration * 60 - totalSeconds,
-        };
-
-        console.log('Submitting test:', submissionData);
-
-        // Navigate to analysis page
-        navigate('/analysis', {
-            state: {
-                answers: selectedOptions,
-                timeSpent: timeSpentPerQuestion,
-            }
+        const responses = questions.map((q, index) => {
+            const answer = q.type === 'TITA'
+                ? titaAnswers[index]
+                : selectedOptions[index];
+            return {
+                questionId: q.id || q._id,
+                answer: answer || null,
+                timeSpent: timeSpentPerQuestion[index] || 0,
+            };
         });
+
+        const totalTime = testConfig.duration * 60 - totalSeconds;
+
+        try {
+            const result = await testService.submitTest(testId, responses, totalTime);
+
+            if (result.success) {
+                navigate('/analysis', {
+                    state: {
+                        attemptId: result.attemptId,
+                        score: result.score,
+                        testName: testConfig.name,
+                        totalMarks: testConfig.totalMarks,
+                        responses: responses,
+                    }
+                });
+            } else {
+                alert('Failed to submit: ' + (result.error || 'Unknown error'));
+                setSubmitting(false);
+            }
+        } catch (err) {
+            alert('Error: ' + err.message);
+            setSubmitting(false);
+        }
     };
 
-    // Get question status for navigation palette
     const getQuestionStatus = (index) => {
-        const isAnswered = selectedOptions[index] !== undefined;
+        const q = questions[index];
+        const isAnswered = q?.type === 'TITA'
+            ? titaAnswers[index] !== undefined
+            : selectedOptions[index] !== undefined;
         const isMarked = markedForReview[index];
         const isCurrent = index === currentQuestionIndex;
 
@@ -171,46 +276,102 @@ function Test() {
         return 'unanswered';
     };
 
-    // Calculate summary stats
     const getSummaryStats = () => {
-        const answered = Object.keys(selectedOptions).length;
+        let answered = 0;
+        questions.forEach((q, index) => {
+            if (q?.type === 'TITA' ? titaAnswers[index] : selectedOptions[index]) {
+                answered++;
+            }
+        });
         const marked = Object.keys(markedForReview).filter((k) => markedForReview[k]).length;
         const pending = questions.length - answered;
         return { answered, marked, pending };
     };
 
-    const stats = getSummaryStats();
-    const currentQuestion = questions[currentQuestionIndex];
-
-    if (!currentQuestion) {
+    // Loading
+    if (loading) {
         return (
-            <div className="test-page">
-                <div className="loading">Loading questions...</div>
+            <div className="test-page test-page--loading">
+                <div className="loading-container">
+                    <div className="loading-spinner large"></div>
+                    <h2>Loading Test...</h2>
+                    <p>Fetching questions from server</p>
+                </div>
             </div>
         );
     }
 
+    // Error
+    if (error) {
+        return (
+            <div className="test-page test-page--error">
+                <div className="error-container">
+                    <div className="error-icon">
+                        <Icon name="alertTriangle" size={64} />
+                    </div>
+                    <h2>Oops! Something went wrong</h2>
+                    <p>{error}</p>
+                    <div className="error-actions">
+                        <button className="btn btn--secondary" onClick={() => navigate('/test')}>
+                            <Icon name="arrowLeft" size={16} />
+                            Back to Tests
+                        </button>
+                        <button className="btn btn--primary" onClick={() => window.location.reload()}>
+                            <Icon name="refresh" size={16} />
+                            Try Again
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (!testConfig || questions.length === 0) {
+        return (
+            <div className="test-page test-page--error">
+                <div className="error-container">
+                    <div className="error-icon">
+                        <Icon name="clipboard" size={64} />
+                    </div>
+                    <h2>No Questions Found</h2>
+                    <p>This test doesn't have any questions yet.</p>
+                    <button className="btn btn--primary" onClick={() => navigate('/test')}>
+                        <Icon name="arrowLeft" size={16} />
+                        Back to Tests
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    const stats = getSummaryStats();
+    const currentQuestion = questions[currentQuestionIndex];
+
     return (
         <div className="test-page">
+            <FocusWarning
+                show={showWarning}
+                message={warningMessage}
+                remainingAttempts={remainingAttempts}
+                onDismiss={() => { }}
+            />
+
             {/* Header */}
             <header className="test-header">
                 <div className="test-info">
-                    <h1 className="test-title">{mockTestConfig.testName}</h1>
+                    <h1 className="test-title">{testConfig.name}</h1>
                     <div className="test-meta">
                         <div className="test-meta__item">
                             <span>{questions.length}</span> Questions
                         </div>
                         <div className="test-meta__item">
-                            <span>{mockTestConfig.totalMarks}</span> Marks
+                            <span>{testConfig.totalMarks}</span> Marks
                         </div>
                     </div>
                 </div>
 
                 <div className={`timer timer--${getTimerStatus()}`}>
-                    <svg className="timer__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <circle cx="12" cy="12" r="10" />
-                        <path d="M12 6v6l4 2" />
-                    </svg>
+                    <Icon name="clock" size={20} />
                     <span className="timer__display">{formatTime(totalSeconds)}</span>
                 </div>
             </header>
@@ -221,175 +382,138 @@ function Test() {
                 <div className="question-panel">
                     <div className="question-header">
                         <div className="question-number">
-                            Question <span>{currentQuestion.qno}</span> of {questions.length}
+                            Question <span>{currentQuestionIndex + 1}</span> of {questions.length}
                         </div>
                         <div className="question-badges">
-                            <span className="badge badge--subject">{currentQuestion.subject}</span>
-                            <span className={`badge badge--difficulty-${currentQuestion.difficulty}`}>
-                                {currentQuestion.difficulty}
-                            </span>
+                            {currentQuestion.section && (
+                                <span className={`badge badge--section`}>
+                                    {currentQuestion.section}
+                                </span>
+                            )}
+                            {currentQuestion.topic && (
+                                <span className="badge badge--topic">{currentQuestion.topic}</span>
+                            )}
+                            {currentQuestion.type === 'TITA' && (
+                                <span className="badge badge--tita">TITA</span>
+                            )}
                         </div>
                     </div>
 
+                    {/* Question Content */}
                     <div className="question-content">
                         <p className="question-text">{currentQuestion.question}</p>
 
-                        <div className="options-list">
-                            {currentQuestion.options.map((option) => (
-                                <div
-                                    key={option.key}
-                                    className={`option ${selectedOptions[currentQuestionIndex] === option.key ? 'selected' : ''}`}
-                                    onClick={() => handleOptionSelect(option.key)}
-                                >
-                                    <div className="option__indicator">{option.key}</div>
-                                    <div className="option__text">{option.text}</div>
-                                </div>
-                            ))}
-                        </div>
+                        {currentQuestion.type === 'TITA' ? (
+                            <div className="tita-input-container">
+                                <label>Enter your answer:</label>
+                                <input
+                                    type="text"
+                                    className="tita-input"
+                                    value={titaAnswers[currentQuestionIndex] || ''}
+                                    onChange={(e) => handleTitaInput(e.target.value)}
+                                    placeholder="Type your answer"
+                                    autoFocus
+                                />
+                            </div>
+                        ) : currentQuestion.options ? (
+                            <div className="options-list">
+                                {currentQuestion.options.map((option, idx) => {
+                                    const optKey = option.key || String.fromCharCode(65 + idx);
+                                    return (
+                                        <button
+                                            key={optKey}
+                                            className={`option ${selectedOptions[currentQuestionIndex] === optKey ? 'selected' : ''}`}
+                                            onClick={() => handleOptionSelect(optKey)}
+                                        >
+                                            <span className="option-key">{optKey}</span>
+                                            <span className="option-text">{option.text || option}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        ) : null}
                     </div>
 
+                    {/* Actions */}
                     <div className="question-actions">
-                        <div className="action-group">
+                        <button className="btn btn--ghost" onClick={handleClearResponse}>
+                            Clear
+                        </button>
+                        <button className="btn btn--ghost" onClick={handleMarkForReview}>
+                            {markedForReview[currentQuestionIndex] ? '★ Marked' : 'Mark for Review'}
+                        </button>
+                        <div className="nav-buttons">
                             <button
                                 className="btn btn--secondary"
                                 onClick={handlePrevious}
                                 disabled={currentQuestionIndex === 0}
                             >
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <path d="M19 12H5M12 19l-7-7 7-7" />
-                                </svg>
-                                Previous
-                            </button>
-                            <button
-                                className="btn btn--secondary"
-                                onClick={handleClearResponse}
-                                disabled={!selectedOptions[currentQuestionIndex]}
-                            >
-                                Clear
-                            </button>
-                        </div>
-
-                        <div className="action-group">
-                            <button className="btn btn--warning" onClick={handleMarkForReview}>
-                                {markedForReview[currentQuestionIndex] ? '★ Marked' : '☆ Mark for Review'}
+                                ← Previous
                             </button>
                             <button className="btn btn--primary" onClick={handleSaveAndNext}>
-                                Save & Next
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <path d="M5 12h14M12 5l7 7-7 7" />
-                                </svg>
+                                Save & Next →
                             </button>
                         </div>
                     </div>
                 </div>
 
-                {/* Navigation Palette */}
-                <div className="nav-palette">
-                    <div className="nav-palette__header">
-                        <h3 className="nav-palette__title">Question Navigator</h3>
-                    </div>
-
+                {/* Nav Panel */}
+                <div className="nav-panel">
+                    <h3>Question Palette</h3>
                     <div className="nav-legend">
-                        <div className="legend-item">
-                            <span className="legend-dot legend-dot--unanswered"></span>
-                            Not Answered
-                        </div>
-                        <div className="legend-item">
-                            <span className="legend-dot legend-dot--answered"></span>
-                            Answered
-                        </div>
-                        <div className="legend-item">
-                            <span className="legend-dot legend-dot--marked"></span>
-                            Marked
-                        </div>
-                        <div className="legend-item">
-                            <span className="legend-dot legend-dot--current"></span>
-                            Current
-                        </div>
+                        <span><span className="dot answered"></span> Answered</span>
+                        <span><span className="dot marked"></span> Marked</span>
+                        <span><span className="dot unanswered"></span> Unanswered</span>
                     </div>
-
-                    <div className="summary-stats">
-                        <div className="summary-stat summary-stat--answered">
-                            <div className="summary-stat__value">{stats.answered}</div>
-                            <div className="summary-stat__label">Answered</div>
-                        </div>
-                        <div className="summary-stat summary-stat--marked">
-                            <div className="summary-stat__value">{stats.marked}</div>
-                            <div className="summary-stat__label">Marked</div>
-                        </div>
-                        <div className="summary-stat summary-stat--pending">
-                            <div className="summary-stat__value">{stats.pending}</div>
-                            <div className="summary-stat__label">Pending</div>
-                        </div>
-                    </div>
-
-                    <div className="question-grid">
+                    <div className="question-palette">
                         {questions.map((_, index) => (
                             <button
                                 key={index}
-                                className={`question-btn question-btn--${getQuestionStatus(index)}`}
+                                className={`palette-btn ${getQuestionStatus(index)}`}
                                 onClick={() => goToQuestion(index)}
                             >
                                 {index + 1}
                             </button>
                         ))}
                     </div>
-
-                    <div className="submit-section">
-                        <button className="submit-btn" onClick={() => setShowConfirmModal(true)}>
-                            Submit Test
-                        </button>
+                    <div className="nav-summary">
+                        <div><strong>{stats.answered}</strong> Answered</div>
+                        <div><strong>{stats.marked}</strong> Marked</div>
+                        <div><strong>{stats.pending}</strong> Pending</div>
                     </div>
+                    <button
+                        className="btn btn--primary btn--lg submit-btn"
+                        onClick={() => setShowConfirmModal(true)}
+                        disabled={submitting}
+                    >
+                        {submitting ? 'Submitting...' : 'Submit Test'}
+                    </button>
                 </div>
             </div>
 
-            {/* Confirmation Modal */}
+            {/* Confirm Modal */}
             {showConfirmModal && (
-                <div className="modal-overlay" onClick={() => setShowConfirmModal(false)}>
-                    <div className="modal" onClick={(e) => e.stopPropagation()}>
-                        <div className="modal__header">
-                            <div className="modal__icon">⚠️</div>
-                            <h2 className="modal__title">Submit Test?</h2>
-                            <p className="modal__description">
-                                Are you sure you want to submit? This action cannot be undone.
-                            </p>
+                <div className="modal-overlay">
+                    <div className="modal">
+                        <h2>Submit Test?</h2>
+                        <div className="modal-stats">
+                            <div><strong>{stats.answered}</strong><br />Answered</div>
+                            <div><strong>{stats.pending}</strong><br />Unanswered</div>
+                            <div><strong>{stats.marked}</strong><br />Marked</div>
                         </div>
-
-                        <div className="modal__summary">
-                            <div className="modal__summary-row">
-                                <span className="modal__summary-label">Total Questions</span>
-                                <span className="modal__summary-value">{questions.length}</span>
-                            </div>
-                            <div className="modal__summary-row">
-                                <span className="modal__summary-label">Answered</span>
-                                <span className="modal__summary-value" style={{ color: 'var(--accent-success)' }}>
-                                    {stats.answered}
-                                </span>
-                            </div>
-                            <div className="modal__summary-row">
-                                <span className="modal__summary-label">Marked for Review</span>
-                                <span className="modal__summary-value" style={{ color: 'var(--accent-warning)' }}>
-                                    {stats.marked}
-                                </span>
-                            </div>
-                            <div className="modal__summary-row">
-                                <span className="modal__summary-label">Unanswered</span>
-                                <span className="modal__summary-value" style={{ color: 'var(--accent-danger)' }}>
-                                    {stats.pending}
-                                </span>
-                            </div>
-                            <div className="modal__summary-row">
-                                <span className="modal__summary-label">Time Remaining</span>
-                                <span className="modal__summary-value">{formatTime(totalSeconds)}</span>
-                            </div>
-                        </div>
-
-                        <div className="modal__actions">
+                        {stats.pending > 0 && (
+                            <p className="modal-warning">You have {stats.pending} unanswered questions!</p>
+                        )}
+                        <div className="modal-actions">
                             <button className="btn btn--secondary" onClick={() => setShowConfirmModal(false)}>
                                 Continue Test
                             </button>
-                            <button className="btn btn--success" onClick={handleSubmitTest}>
-                                Yes, Submit
+                            <button
+                                className="btn btn--primary"
+                                onClick={() => handleSubmitTest('manual')}
+                                disabled={submitting}
+                            >
+                                Submit
                             </button>
                         </div>
                     </div>

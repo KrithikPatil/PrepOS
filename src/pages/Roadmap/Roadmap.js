@@ -1,179 +1,273 @@
-import React, { useState } from 'react';
-import { mockRoadmap } from '../../services/mockData';
+import React, { useState, useEffect } from 'react';
+import { studentService } from '../../services';
+import Icon from '../../components/Icon/Icon';
 import './Roadmap.css';
 
 /**
  * Roadmap Page Component
- * Personalized study roadmap with micro-schedule and milestones
- * 
- * TODO: Fetch roadmap from GET /api/student/roadmap
- * TODO: Update task status via PUT /api/roadmap/task/:id
+ * Personalized study roadmap fetched from real backend API
  */
 function Roadmap() {
-    const roadmap = mockRoadmap;
-    const [completedSubtasks, setCompletedSubtasks] = useState({});
+    const [roadmap, setRoadmap] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [expandedWeek, setExpandedWeek] = useState(null);
 
-    const toggleSubtask = (taskId, subtaskIndex) => {
-        const key = `${taskId}-${subtaskIndex}`;
-        setCompletedSubtasks((prev) => ({
-            ...prev,
-            [key]: !prev[key],
-        }));
-    };
+    // Fetch roadmap from API
+    useEffect(() => {
+        const fetchRoadmap = async () => {
+            try {
+                const result = await studentService.getRoadmap();
+
+                if (result.success && result.roadmap) {
+                    setRoadmap(result.roadmap);
+                    // Expand first week by default
+                    if (result.roadmap.weeklyPlan?.length > 0) {
+                        setExpandedWeek(0);
+                    }
+                } else {
+                    setError(result.error || 'Failed to load roadmap');
+                }
+            } catch (err) {
+                setError(err.message);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchRoadmap();
+    }, []);
 
     const formatDuration = (minutes) => {
-        if (minutes >= 60) {
-            const hrs = Math.floor(minutes / 60);
-            const mins = minutes % 60;
-            return mins > 0 ? `${hrs}h ${mins}m` : `${hrs}h`;
-        }
-        return `${minutes}m`;
+        if (!minutes) return '';
+        if (minutes < 60) return `${minutes} min`;
+        const hrs = Math.floor(minutes / 60);
+        const mins = minutes % 60;
+        return mins > 0 ? `${hrs}h ${mins}m` : `${hrs}h`;
     };
+
+    const getTaskTypeIcon = (type) => {
+        const icons = {
+            'concept_review': 'book',
+            'practice': 'clipboard',
+            'speed_drill': 'zap',
+            'mock_test': 'target',
+            'analysis': 'chart',
+            'revision': 'refresh',
+        };
+        return icons[type] || 'list';
+    };
+
+    const getTaskTypeColor = (type) => {
+        const colors = {
+            'concept_review': '#8b5cf6',
+            'practice': '#10b981',
+            'speed_drill': '#f59e0b',
+            'mock_test': '#3b82f6',
+            'analysis': '#ec4899',
+            'revision': '#6366f1',
+        };
+        return colors[type] || '#6b7280';
+    };
+
+    // Loading state
+    if (loading) {
+        return (
+            <div className="roadmap">
+                <div className="loading-state">
+                    <div className="loading-spinner"></div>
+                    <p>Loading your personalized roadmap...</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Error state
+    if (error) {
+        return (
+            <div className="roadmap">
+                <div className="error-state">
+                    <Icon name="alertTriangle" size={48} />
+                    <h2>Failed to load roadmap</h2>
+                    <p>{error}</p>
+                    <button className="btn btn--primary" onClick={() => window.location.reload()}>
+                        Try Again
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    // No roadmap yet - show prompt to take a test
+    if (!roadmap || !roadmap.weeklyPlan || roadmap.weeklyPlan.length === 0) {
+        return (
+            <div className="roadmap">
+                <header className="roadmap__header">
+                    <h1 className="roadmap__title">
+                        <Icon name="roadmap" size={32} className="text-accent" style={{ marginRight: 12 }} />
+                        Your Study Roadmap
+                    </h1>
+                    <p className="roadmap__subtitle">
+                        Complete a mock test to get your personalized CAT preparation roadmap
+                    </p>
+                </header>
+
+                <div className="roadmap-empty">
+                    <div className="roadmap-empty__icon">
+                        <Icon name="chart" size={64} />
+                    </div>
+                    <h2>No Roadmap Yet</h2>
+                    <p>Take a mock test first, and our AI Strategist will create a personalized study plan for you.</p>
+                    <a href="/test" className="btn btn--primary btn-shine">
+                        Take a Mock Test
+                        <Icon name="arrowRight" size={16} />
+                    </a>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="roadmap">
             {/* Header */}
             <header className="roadmap__header">
-                <h1 className="roadmap__title">🗺️ Your Personalized Roadmap</h1>
-                <p className="roadmap__subtitle">
-                    AI-generated study plan tailored to strengthen your weak areas
-                </p>
+                <div>
+                    <h1 className="roadmap__title">
+                        <Icon name="roadmap" size={32} className="text-accent" style={{ marginRight: 12 }} />
+                        Your CAT Roadmap
+                    </h1>
+                    <p className="roadmap__subtitle">
+                        {roadmap.message || `${roadmap.daysUntilExam} days until CAT - Your personalized study plan`}
+                    </p>
+                </div>
+                {roadmap.daysUntilExam && (
+                    <div className="days-counter">
+                        <span className="days-counter__value">{roadmap.daysUntilExam}</span>
+                        <span className="days-counter__label">Days Left</span>
+                    </div>
+                )}
             </header>
 
-            {/* Stats */}
-            <section className="roadmap-stats">
-                <div className="roadmap-stat">
-                    <div className="roadmap-stat__icon">🎯</div>
-                    <div className="roadmap-stat__value">{roadmap.daysUntilExam}</div>
-                    <div className="roadmap-stat__label">Days Until Exam</div>
-                </div>
-                <div className="roadmap-stat">
-                    <div className="roadmap-stat__icon">📚</div>
-                    <div className="roadmap-stat__value">{roadmap.focusAreas.length}</div>
-                    <div className="roadmap-stat__label">Focus Areas</div>
-                </div>
-                <div className="roadmap-stat">
-                    <div className="roadmap-stat__icon">📋</div>
-                    <div className="roadmap-stat__value">
-                        {roadmap.weeklyPlan[0]?.tasks.length || 0}
-                    </div>
-                    <div className="roadmap-stat__label">Tasks This Week</div>
-                </div>
-                <div className="roadmap-stat">
-                    <div className="roadmap-stat__icon">🏆</div>
-                    <div className="roadmap-stat__value">{roadmap.milestones.length}</div>
-                    <div className="roadmap-stat__label">Milestones</div>
-                </div>
-            </section>
-
             {/* Focus Areas */}
-            <section className="focus-areas">
-                {roadmap.focusAreas.map((area, index) => (
-                    <span key={index} className="focus-tag">{area}</span>
-                ))}
-            </section>
+            {roadmap.focusAreas && roadmap.focusAreas.length > 0 && (
+                <section className="focus-areas">
+                    <h2>
+                        <Icon name="target" size={20} style={{ marginRight: 8 }} />
+                        Focus Areas
+                    </h2>
+                    <div className="focus-tags">
+                        {roadmap.focusAreas.map((area, idx) => (
+                            <span key={idx} className="focus-tag">{area}</span>
+                        ))}
+                    </div>
+                </section>
+            )}
 
-            {/* Main Layout */}
-            <div className="roadmap-layout">
-                {/* Weekly Plan */}
-                <section className="weekly-plan">
-                    {roadmap.weeklyPlan.map((week) => (
-                        <div key={week.week}>
-                            <div className="weekly-plan__header">
-                                <h2 className="weekly-plan__title">
-                                    Week {week.week}: {week.theme}
-                                </h2>
-                                <span className="weekly-plan__dates">
-                                    📅 {week.startDate} - {week.endDate}
-                                </span>
+            {/* Weekly Plan */}
+            <section className="weekly-plan">
+                <h2>
+                    <Icon name="calendar" size={20} style={{ marginRight: 8 }} />
+                    Weekly Schedule
+                </h2>
+
+                <div className="weeks-list">
+                    {roadmap.weeklyPlan.map((week, weekIdx) => (
+                        <div
+                            key={weekIdx}
+                            className={`week-card ${expandedWeek === weekIdx ? 'expanded' : ''}`}
+                        >
+                            <div
+                                className="week-card__header"
+                                onClick={() => setExpandedWeek(expandedWeek === weekIdx ? null : weekIdx)}
+                            >
+                                <div className="week-card__info">
+                                    <span className="week-number">Week {weekIdx + 1}</span>
+                                    <h3>{week.theme || `Week ${weekIdx + 1} Tasks`}</h3>
+                                </div>
+                                <div className="week-card__meta">
+                                    <span>{week.tasks?.length || 0} tasks</span>
+                                    <Icon
+                                        name={expandedWeek === weekIdx ? 'chevronUp' : 'chevronDown'}
+                                        size={20}
+                                    />
+                                </div>
                             </div>
 
-                            <div className="task-list">
-                                {week.tasks.map((task, taskIndex) => (
-                                    <div
-                                        key={task.id}
-                                        className={`task-item ${task.status === 'completed' ? 'task-item--completed' : ''}`}
-                                    >
-                                        <div className="task-timeline">
-                                            <span className="task-day">{task.day}</span>
-                                            <div className="task-dot" />
-                                            {taskIndex < week.tasks.length - 1 && (
-                                                <div className="task-line" />
-                                            )}
-                                        </div>
-
-                                        <div className="task-content">
-                                            <div className="task-header">
-                                                <h3 className="task-title">{task.title}</h3>
-                                                <div className="task-badges">
-                                                    <span className="task-badge task-badge--type">
-                                                        {task.type.replace('_', ' ')}
-                                                    </span>
-                                                    <span className="task-badge task-badge--duration">
-                                                        ⏱️ {formatDuration(task.duration)}
-                                                    </span>
-                                                    <span className={`task-badge task-badge--priority-${task.priority}`}>
-                                                        {task.priority}
+                            {expandedWeek === weekIdx && week.tasks && (
+                                <div className="week-card__tasks">
+                                    {week.tasks.map((task, taskIdx) => (
+                                        <div
+                                            key={taskIdx}
+                                            className="task-item"
+                                            style={{ borderLeftColor: getTaskTypeColor(task.type) }}
+                                        >
+                                            <div className="task-item__icon">
+                                                <Icon
+                                                    name={getTaskTypeIcon(task.type)}
+                                                    size={18}
+                                                    style={{ color: getTaskTypeColor(task.type) }}
+                                                />
+                                            </div>
+                                            <div className="task-item__content">
+                                                <h4>{task.title}</h4>
+                                                {task.description && (
+                                                    <p>{task.description}</p>
+                                                )}
+                                                <div className="task-item__meta">
+                                                    {task.duration && (
+                                                        <span>
+                                                            <Icon name="clock" size={12} />
+                                                            {formatDuration(task.duration)}
+                                                        </span>
+                                                    )}
+                                                    {task.day && (
+                                                        <span>
+                                                            <Icon name="calendar" size={12} />
+                                                            {task.day}
+                                                        </span>
+                                                    )}
+                                                    <span className="task-type-label">
+                                                        {task.type?.replace('_', ' ')}
                                                     </span>
                                                 </div>
                                             </div>
-
-                                            <div className="subtask-list">
-                                                {task.subtasks.map((subtask, subIndex) => {
-                                                    const isCompleted = completedSubtasks[`${task.id}-${subIndex}`];
-                                                    return (
-                                                        <div
-                                                            key={subIndex}
-                                                            className={`subtask-item ${isCompleted ? 'completed' : ''}`}
-                                                        >
-                                                            <div
-                                                                className={`subtask-checkbox ${isCompleted ? 'checked' : ''}`}
-                                                                onClick={() => toggleSubtask(task.id, subIndex)}
-                                                            />
-                                                            {subtask}
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
                                         </div>
-                                    </div>
-                                ))}
-                            </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     ))}
-                </section>
+                </div>
+            </section>
 
-                {/* Milestones Sidebar */}
-                <aside className="milestones-sidebar">
-                    <div className="milestones-card">
-                        <h3 className="milestones-card__title">🏆 Milestones</h3>
-                        {roadmap.milestones.map((milestone) => (
-                            <div key={milestone.id} className="milestone-item">
-                                <div className="milestone-header">
-                                    <span className="milestone-title">{milestone.title}</span>
-                                    <span className="milestone-progress-value">{milestone.progress}%</span>
+            {/* Milestones */}
+            {roadmap.milestones && roadmap.milestones.length > 0 && (
+                <section className="milestones">
+                    <h2>
+                        <Icon name="trophy" size={20} style={{ marginRight: 8 }} />
+                        Milestones
+                    </h2>
+                    <div className="milestones-list">
+                        {roadmap.milestones.map((milestone, idx) => (
+                            <div key={idx} className="milestone-card">
+                                <div className="milestone-card__icon">
+                                    <Icon name="flag" size={24} />
                                 </div>
-                                <div className="milestone-target">Target: {milestone.target}</div>
-                                <div className="milestone-progress-bar">
-                                    <div
-                                        className="milestone-progress-fill"
-                                        style={{ width: `${milestone.progress}%` }}
-                                    />
+                                <div className="milestone-card__content">
+                                    <h4>{milestone.title}</h4>
+                                    <p>{milestone.criteria}</p>
+                                    {milestone.targetDate && (
+                                        <span className="milestone-date">
+                                            <Icon name="calendar" size={12} />
+                                            {milestone.targetDate}
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                         ))}
                     </div>
-
-                    <div className="ai-insights-card">
-                        <h3 className="ai-insights-card__title">🤖 AI Insights</h3>
-                        <p className="ai-insights-card__content">
-                            Based on your test performance, focus on <strong>Electrochemistry</strong> first.
-                            Your time management in this area needs improvement.
-                            Aim for <strong>15 practice problems daily</strong> for optimal progress.
-                        </p>
-                    </div>
-                </aside>
-            </div>
+                </section>
+            )}
         </div>
     );
 }

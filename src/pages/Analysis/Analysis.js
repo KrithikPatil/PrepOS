@@ -1,201 +1,319 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { mockAnalysisResults, mockTestQuestions } from '../../services/mockData';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { studentService } from '../../services';
+import Icon from '../../components/Icon/Icon';
 import './Analysis.css';
 
 /**
  * Analysis Page Component
- * Post-test analysis with mistake classification and detailed breakdown
- * 
- * TODO: Fetch analysis from POST /api/test/:testId/submit
- * TODO: Inject Detective Agent analysis here
+ * Shows post-test analysis based on real attempt data
  */
 function Analysis() {
     const navigate = useNavigate();
-    const results = mockAnalysisResults;
-    const questions = mockTestQuestions;
+    const location = useLocation();
 
-    // Count mistake types
-    const mistakeCounts = {
-        conceptual: results.mistakeClassification.filter(m => m.type === 'conceptual_gap').length,
-        silly: results.mistakeClassification.filter(m => m.type === 'silly_mistake').length,
-        time: results.mistakeClassification.filter(m => m.type === 'time_management').length,
+    // Get data from Test page navigation
+    const attemptData = location.state;
+
+    const [analysis, setAnalysis] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    useEffect(() => {
+        const fetchAnalysis = async () => {
+            try {
+                // If we have attempt data from navigation, use it
+                if (attemptData?.attemptId) {
+                    const result = await studentService.getAttemptAnalysis(attemptData.attemptId);
+
+                    if (result.success) {
+                        setAnalysis({
+                            ...result.analysis,
+                            score: attemptData.score,
+                            testName: attemptData.testName,
+                            totalMarks: attemptData.totalMarks,
+                        });
+                    } else {
+                        // Use the basic data we have
+                        setAnalysis({
+                            score: attemptData.score || 0,
+                            testName: attemptData.testName || 'Test',
+                            totalMarks: attemptData.totalMarks || 100,
+                            percentage: Math.round((attemptData.score / attemptData.totalMarks) * 100) || 0,
+                        });
+                    }
+                } else {
+                    // No attempt data - fetch recent attempts
+                    const result = await studentService.getAttempts();
+
+                    if (result.success && result.attempts?.length > 0) {
+                        const latestAttempt = result.attempts[0];
+                        setAnalysis({
+                            score: latestAttempt.score || 0,
+                            testName: latestAttempt.testName || 'Recent Test',
+                            totalMarks: latestAttempt.totalMarks || 100,
+                            percentage: Math.round((latestAttempt.score / latestAttempt.totalMarks) * 100) || 0,
+                            sectionScores: latestAttempt.sectionScores,
+                        });
+                    } else {
+                        setError('No test attempts found. Take a test first!');
+                    }
+                }
+            } catch (err) {
+                console.error('Analysis fetch error:', err);
+                // Fallback to basic display from navigation state
+                if (attemptData) {
+                    setAnalysis({
+                        score: attemptData.score || 0,
+                        testName: attemptData.testName || 'Test',
+                        totalMarks: attemptData.totalMarks || 100,
+                        percentage: Math.round(((attemptData.score || 0) / (attemptData.totalMarks || 100)) * 100),
+                    });
+                } else {
+                    setError('Could not load analysis data');
+                }
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchAnalysis();
+    }, [attemptData]);
+
+    const getScoreColor = (percentage) => {
+        if (percentage >= 80) return '#10b981';
+        if (percentage >= 60) return '#f59e0b';
+        return '#ef4444';
     };
 
-    // Get time indicator
-    const getTimeIndicator = (timeSpent, avgTime) => {
-        const ratio = timeSpent / avgTime;
-        if (ratio < 0.7) return { class: 'fast', icon: '⚡' };
-        if (ratio > 1.3) return { class: 'slow', icon: '🐢' };
-        return { class: 'normal', icon: '✓' };
+    const getSectionColor = (section) => {
+        const colors = {
+            'VARC': '#8b5cf6',
+            'DILR': '#f59e0b',
+            'QA': '#10b981',
+        };
+        return colors[section] || '#6b7280';
     };
+
+    // Loading
+    if (loading) {
+        return (
+            <div className="analysis">
+                <div className="loading-state">
+                    <div className="loading-spinner"></div>
+                    <p>Loading analysis...</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Error
+    if (error) {
+        return (
+            <div className="analysis">
+                <div className="error-state">
+                    <Icon name="alertTriangle" size={48} />
+                    <h2>No Analysis Available</h2>
+                    <p>{error}</p>
+                    <button className="btn btn--primary" onClick={() => navigate('/test')}>
+                        Take a Test
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    // No analysis
+    if (!analysis) {
+        return (
+            <div className="analysis">
+                <div className="error-state">
+                    <Icon name="clipboard" size={48} />
+                    <h2>No Test Data</h2>
+                    <p>Complete a test to see your analysis</p>
+                    <button className="btn btn--primary" onClick={() => navigate('/test')}>
+                        Take a Test
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    const percentage = analysis.percentage || Math.round((analysis.score / analysis.totalMarks) * 100);
 
     return (
         <div className="analysis">
             {/* Header */}
             <header className="analysis__header">
-                <h1 className="analysis__title">📊 Test Analysis</h1>
-                <p className="analysis__subtitle">
-                    Detailed breakdown of your performance with AI-powered insights
-                </p>
+                <div>
+                    <h1 className="analysis__title">
+                        <Icon name="chart" size={32} className="text-accent" style={{ marginRight: 12 }} />
+                        Test Analysis
+                    </h1>
+                    <p className="analysis__subtitle">{analysis.testName}</p>
+                </div>
+                <button
+                    className="btn btn--primary"
+                    onClick={() => navigate('/agents', { state: { attemptId: attemptData?.attemptId } })}
+                >
+                    <Icon name="agents" size={16} />
+                    AI Analysis
+                </button>
             </header>
 
             {/* Score Overview */}
             <section className="score-overview">
-                <div className="score-card" style={{ '--score-percent': results.score.percentage }}>
-                    <div className="score-circle">
-                        <div className="score-value">
-                            {results.score.obtained}<span>/{results.score.total}</span>
+                <div className="score-card main-score">
+                    <div
+                        className="score-circle"
+                        style={{
+                            background: `conic-gradient(${getScoreColor(percentage)} ${percentage * 3.6}deg, #1e1e2e ${percentage * 3.6}deg)`
+                        }}
+                    >
+                        <div className="score-circle__inner">
+                            <span className="score-value">{percentage}%</span>
+                            <span className="score-label">{analysis.score}/{analysis.totalMarks}</span>
                         </div>
                     </div>
-                    <p className="score-label">
-                        {results.score.percentage}% • Percentile: {results.score.percentile}
-                    </p>
-                    <div className="score-stats">
-                        <div className="score-stat">
-                            <div className="score-stat__value score-stat__value--correct">
-                                {results.summary.correct}
-                            </div>
-                            <div className="score-stat__label">Correct</div>
-                        </div>
-                        <div className="score-stat">
-                            <div className="score-stat__value score-stat__value--incorrect">
-                                {results.summary.incorrect}
-                            </div>
-                            <div className="score-stat__label">Incorrect</div>
-                        </div>
-                        <div className="score-stat">
-                            <div className="score-stat__value score-stat__value--unattempted">
-                                {results.summary.unattempted}
-                            </div>
-                            <div className="score-stat__label">Skipped</div>
-                        </div>
-                    </div>
+                    <h3>Overall Score</h3>
                 </div>
 
-                <div className="subject-breakdown">
-                    <h3 className="subject-breakdown__title">Subject-wise Performance</h3>
-                    {results.subjectWise.map((subject) => (
-                        <div key={subject.subject} className="subject-item">
-                            <div className="subject-header">
-                                <span className="subject-name">{subject.subject}</span>
-                                <span className="subject-score">
-                                    {subject.score}/{subject.total} ({Math.round((subject.score / subject.total) * 100)}%)
-                                </span>
+                <div className="score-breakdown">
+                    {analysis.sectionScores ? (
+                        Object.entries(analysis.sectionScores).map(([section, data]) => (
+                            <div
+                                key={section}
+                                className="section-score-card"
+                                style={{ borderLeftColor: getSectionColor(section) }}
+                            >
+                                <h4>{section}</h4>
+                                <div className="section-score-card__value">
+                                    <span className="score">{data.score || 0}</span>
+                                    <span className="total">/{data.total || 0}</span>
+                                </div>
+                                <div className="section-score-card__bar">
+                                    <div
+                                        className="bar-fill"
+                                        style={{
+                                            width: `${data.total ? (data.score / data.total) * 100 : 0}%`,
+                                            background: getSectionColor(section)
+                                        }}
+                                    />
+                                </div>
                             </div>
-                            <div className="subject-progress">
-                                <div
-                                    className={`subject-progress__bar subject-progress__bar--${subject.subject.toLowerCase()}`}
-                                    style={{ width: `${(subject.score / subject.total) * 100}%` }}
-                                />
-                            </div>
+                        ))
+                    ) : (
+                        <div className="no-sections">
+                            <p>Section-wise breakdown will be available after AI analysis</p>
+                            <button
+                                className="btn btn--secondary"
+                                onClick={() => navigate('/agents', { state: { attemptId: attemptData?.attemptId } })}
+                            >
+                                Get AI Analysis
+                            </button>
                         </div>
-                    ))}
-                </div>
-            </section>
-
-            {/* Mistake Classification */}
-            <section className="mistake-section">
-                <h2 className="section-title">🔍 Mistake Classification</h2>
-                <div className="mistake-cards">
-                    <div className="mistake-card mistake-card--conceptual">
-                        <div className="mistake-card__header">
-                            <div className="mistake-card__icon">📚</div>
-                            <div className="mistake-card__count">{mistakeCounts.conceptual}</div>
-                        </div>
-                        <h3 className="mistake-card__title">Conceptual Gaps</h3>
-                        <p className="mistake-card__description">
-                            Questions where your understanding of fundamental concepts needs strengthening.
-                            Focus on revisiting theory and practice basic problems.
-                        </p>
-                    </div>
-
-                    <div className="mistake-card mistake-card--silly">
-                        <div className="mistake-card__header">
-                            <div className="mistake-card__icon">⚡</div>
-                            <div className="mistake-card__count">{mistakeCounts.silly}</div>
-                        </div>
-                        <h3 className="mistake-card__title">Silly Mistakes</h3>
-                        <p className="mistake-card__description">
-                            Errors due to carelessness despite knowing the concept.
-                            Practice double-checking your calculations before moving on.
-                        </p>
-                    </div>
-
-                    <div className="mistake-card mistake-card--time">
-                        <div className="mistake-card__header">
-                            <div className="mistake-card__icon">⏱️</div>
-                            <div className="mistake-card__count">{mistakeCounts.time}</div>
-                        </div>
-                        <h3 className="mistake-card__title">Time Issues</h3>
-                        <p className="mistake-card__description">
-                            Questions where time management impacted your performance.
-                            Practice with timer and learn to flag & skip strategically.
-                        </p>
-                    </div>
+                    )}
                 </div>
             </section>
 
-            {/* Detailed Analysis Table */}
-            <section className="analysis-table-section">
-                <div className="analysis-table-header">
-                    <h2 className="section-title">📋 Question-wise Analysis</h2>
-                </div>
-                <table className="analysis-table">
-                    <thead>
-                        <tr>
-                            <th>Q#</th>
-                            <th>Subject</th>
-                            <th>Topic</th>
-                            <th>Status</th>
-                            <th>Your Answer</th>
-                            <th>Correct</th>
-                            <th>Time Spent</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {results.perQuestionAnalysis.map((item, index) => {
-                            const question = questions[index];
-                            const timeIndicator = getTimeIndicator(item.timeSpent, item.avgTime);
-
-                            return (
-                                <tr key={item.qno}>
-                                    <td>{item.qno}</td>
-                                    <td>{question?.subject || '-'}</td>
-                                    <td>{question?.topic || '-'}</td>
-                                    <td>
-                                        <span className={`status-badge status-badge--${item.status}`}>
-                                            {item.status}
-                                        </span>
-                                    </td>
-                                    <td>{item.answer || '-'}</td>
-                                    <td>{item.correct}</td>
-                                    <td>
-                                        <span className={`time-indicator time-indicator--${timeIndicator.class}`}>
-                                            {timeIndicator.icon} {item.timeSpent}s
-                                        </span>
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                    </tbody>
-                </table>
-            </section>
-
-            {/* CTAs */}
-            <section className="analysis-cta">
-                <div className="cta-card" onClick={() => navigate('/agents')}>
-                    <div className="cta-card__icon">🤖</div>
-                    <div className="cta-card__content">
-                        <h3>View AI Agent Insights</h3>
-                        <p>See what our AI agents discovered about your learning patterns</p>
+            {/* Quick Stats */}
+            <section className="quick-stats">
+                <div className="stat-card">
+                    <Icon name="check" size={24} />
+                    <div className="stat-card__content">
+                        <span className="stat-value">
+                            {analysis.correct || Math.round(analysis.score / 3)}
+                        </span>
+                        <span className="stat-label">Correct</span>
                     </div>
                 </div>
-                <div className="cta-card" onClick={() => navigate('/roadmap')}>
-                    <div className="cta-card__icon">🗺️</div>
-                    <div className="cta-card__content">
-                        <h3>Get Personalized Roadmap</h3>
-                        <p>AI-generated study plan to improve your weak areas</p>
+                <div className="stat-card">
+                    <Icon name="x" size={24} />
+                    <div className="stat-card__content">
+                        <span className="stat-value">
+                            {analysis.incorrect || 0}
+                        </span>
+                        <span className="stat-label">Incorrect</span>
+                    </div>
+                </div>
+                <div className="stat-card">
+                    <Icon name="minus" size={24} />
+                    <div className="stat-card__content">
+                        <span className="stat-value">
+                            {analysis.unattempted || 0}
+                        </span>
+                        <span className="stat-label">Skipped</span>
+                    </div>
+                </div>
+                <div className="stat-card">
+                    <Icon name="clock" size={24} />
+                    <div className="stat-card__content">
+                        <span className="stat-value">
+                            {analysis.timeTaken || '0m'}
+                        </span>
+                        <span className="stat-label">Time Taken</span>
+                    </div>
+                </div>
+            </section>
+
+            {/* Action Cards */}
+            <section className="action-cards">
+                <div
+                    className="action-card hover-lift"
+                    onClick={() => navigate('/agents', { state: { attemptId: attemptData?.attemptId } })}
+                >
+                    <div className="action-card__icon" style={{ background: '#8b5cf620', color: '#8b5cf6' }}>
+                        <Icon name="agents" size={28} />
+                    </div>
+                    <h3>AI Agent Analysis</h3>
+                    <p>Get detailed insights from our AI agents</p>
+                    <span className="action-card__arrow">→</span>
+                </div>
+
+                <div
+                    className="action-card hover-lift"
+                    onClick={() => navigate('/roadmap')}
+                >
+                    <div className="action-card__icon" style={{ background: '#10b98120', color: '#10b981' }}>
+                        <Icon name="roadmap" size={28} />
+                    </div>
+                    <h3>Study Roadmap</h3>
+                    <p>View your personalized study plan</p>
+                    <span className="action-card__arrow">→</span>
+                </div>
+
+                <div
+                    className="action-card hover-lift"
+                    onClick={() => navigate('/test')}
+                >
+                    <div className="action-card__icon" style={{ background: '#3b82f620', color: '#3b82f6' }}>
+                        <Icon name="clipboard" size={28} />
+                    </div>
+                    <h3>Take Another Test</h3>
+                    <p>Practice more to improve</p>
+                    <span className="action-card__arrow">→</span>
+                </div>
+            </section>
+
+            {/* Performance Message */}
+            <section className="performance-message">
+                <div className={`message-card ${percentage >= 70 ? 'success' : percentage >= 50 ? 'warning' : 'danger'}`}>
+                    <Icon name={percentage >= 70 ? 'trophy' : percentage >= 50 ? 'target' : 'flag'} size={24} />
+                    <div>
+                        <h4>
+                            {percentage >= 70
+                                ? 'Great Performance!'
+                                : percentage >= 50
+                                    ? 'Good Effort!'
+                                    : 'Keep Practicing!'}
+                        </h4>
+                        <p>
+                            {percentage >= 70
+                                ? 'You\'re doing excellent! Keep up the good work.'
+                                : percentage >= 50
+                                    ? 'You\'re on the right track. Focus on weak areas.'
+                                    : 'Review the topics and practice more. You\'ll improve!'}
+                        </p>
                     </div>
                 </div>
             </section>
