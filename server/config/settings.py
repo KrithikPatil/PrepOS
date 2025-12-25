@@ -25,10 +25,10 @@ class Settings(BaseSettings):
     # Google OAuth
     google_client_id: str = ""
     google_client_secret: str = ""
-    google_redirect_uri: str = "http://localhost:3001/api/auth/google/callback"
+    google_redirect_uri: str = "https://prepos.onrender.com/api/auth/google/callback"
     
     # Frontend
-    frontend_url: str = "http://localhost:3000"
+    frontend_url: str = "https://prepos-frontend.onrender.com"
     
     # Server
     host: str = "0.0.0.0"
