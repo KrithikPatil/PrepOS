@@ -5,14 +5,11 @@ import Icon from '../../components/Icon/Icon';
 import './Analysis.css';
 
 /**
- * Analysis Page Component
- * Shows post-test analysis based on real attempt data
+ * Analysis Page - Premium Post-Test Analysis
  */
 function Analysis() {
     const navigate = useNavigate();
     const location = useLocation();
-
-    // Get data from Test page navigation
     const attemptData = location.state;
 
     const [analysis, setAnalysis] = useState(null);
@@ -20,303 +17,309 @@ function Analysis() {
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        const fetchAnalysis = async () => {
-            try {
-                // If we have attempt data from navigation, use it
-                if (attemptData?.attemptId) {
-                    const result = await studentService.getAttemptAnalysis(attemptData.attemptId);
+        fetchAnalysis();
+    }, [attemptData]);
 
-                    if (result.success) {
-                        setAnalysis({
-                            ...result.analysis,
-                            score: attemptData.score,
-                            testName: attemptData.testName,
-                            totalMarks: attemptData.totalMarks,
-                        });
-                    } else {
-                        // Use the basic data we have
-                        setAnalysis({
-                            score: attemptData.score || 0,
-                            testName: attemptData.testName || 'Test',
-                            totalMarks: attemptData.totalMarks || 100,
-                            percentage: Math.round((attemptData.score / attemptData.totalMarks) * 100) || 0,
-                        });
-                    }
+    const fetchAnalysis = async () => {
+        try {
+            if (attemptData?.attemptId) {
+                const result = await studentService.getAttemptAnalysis(attemptData.attemptId);
+
+                if (result.success) {
+                    setAnalysis({
+                        ...result.analysis,
+                        score: attemptData.score,
+                        testName: attemptData.testName,
+                        totalMarks: attemptData.totalMarks,
+                    });
                 } else {
-                    // No attempt data - fetch recent attempts
-                    const result = await studentService.getAttempts();
-
-                    if (result.success && result.attempts?.length > 0) {
-                        const latestAttempt = result.attempts[0];
-                        setAnalysis({
-                            score: latestAttempt.score || 0,
-                            testName: latestAttempt.testName || 'Recent Test',
-                            totalMarks: latestAttempt.totalMarks || 100,
-                            percentage: Math.round((latestAttempt.score / latestAttempt.totalMarks) * 100) || 0,
-                            sectionScores: latestAttempt.sectionScores,
-                        });
-                    } else {
-                        setError('No test attempts found. Take a test first!');
-                    }
-                }
-            } catch (err) {
-                console.error('Analysis fetch error:', err);
-                // Fallback to basic display from navigation state
-                if (attemptData) {
                     setAnalysis({
                         score: attemptData.score || 0,
                         testName: attemptData.testName || 'Test',
                         totalMarks: attemptData.totalMarks || 100,
-                        percentage: Math.round(((attemptData.score || 0) / (attemptData.totalMarks || 100)) * 100),
+                        percentage: Math.round((attemptData.score / attemptData.totalMarks) * 100) || 0,
+                    });
+                }
+            } else {
+                const result = await studentService.getAttempts();
+
+                if (result.success && result.attempts?.length > 0) {
+                    const latest = result.attempts[0];
+                    setAnalysis({
+                        score: latest.score || 0,
+                        testName: latest.testName || 'Recent Test',
+                        totalMarks: latest.totalMarks || 100,
+                        percentage: Math.round((latest.score / latest.totalMarks) * 100) || 0,
+                        sectionScores: latest.sectionScores,
                     });
                 } else {
-                    setError('Could not load analysis data');
+                    setError('No test attempts found');
                 }
-            } finally {
-                setLoading(false);
             }
-        };
+        } catch (err) {
+            if (attemptData) {
+                setAnalysis({
+                    score: attemptData.score || 0,
+                    testName: attemptData.testName || 'Test',
+                    totalMarks: attemptData.totalMarks || 100,
+                    percentage: Math.round(((attemptData.score || 0) / (attemptData.totalMarks || 100)) * 100),
+                });
+            } else {
+                setError('Could not load analysis');
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
 
-        fetchAnalysis();
-    }, [attemptData]);
-
-    const getScoreColor = (percentage) => {
-        if (percentage >= 80) return '#10b981';
-        if (percentage >= 60) return '#f59e0b';
+    const getScoreColor = (pct) => {
+        if (pct >= 80) return '#10b981';
+        if (pct >= 60) return '#f59e0b';
         return '#ef4444';
     };
 
     const getSectionColor = (section) => {
-        const colors = {
-            'VARC': '#8b5cf6',
-            'DILR': '#f59e0b',
-            'QA': '#10b981',
-        };
+        const colors = { 'VARC': '#8b5cf6', 'DILR': '#f59e0b', 'QA': '#10b981' };
         return colors[section] || '#6b7280';
+    };
+
+    const getGrade = (pct) => {
+        if (pct >= 90) return { letter: 'A+', label: 'Excellent' };
+        if (pct >= 80) return { letter: 'A', label: 'Great' };
+        if (pct >= 70) return { letter: 'B', label: 'Good' };
+        if (pct >= 60) return { letter: 'C', label: 'Average' };
+        return { letter: 'D', label: 'Needs Work' };
     };
 
     // Loading
     if (loading) {
         return (
-            <div className="analysis">
-                <div className="loading-state">
-                    <div className="loading-spinner"></div>
-                    <p>Loading analysis...</p>
+            <div className="an-page">
+                <div className="an-loading">
+                    <div className="an-loading__spinner"></div>
+                    <p>Loading your analysis...</p>
                 </div>
             </div>
         );
     }
 
-    // Error
-    if (error) {
+    // Error / No Data
+    if (error || !analysis) {
         return (
-            <div className="analysis">
-                <div className="error-state">
-                    <Icon name="alertTriangle" size={48} />
+            <div className="an-page">
+                <div className="an-empty">
+                    <div className="an-empty__illustration">
+                        <div className="an-empty__circle">
+                            <Icon name="chart" size={64} />
+                        </div>
+                        <div className="an-empty__ring"></div>
+                    </div>
                     <h2>No Analysis Available</h2>
-                    <p>{error}</p>
-                    <button className="btn btn--primary" onClick={() => navigate('/test')}>
-                        Take a Test
+                    <p>{error || 'Complete a test to see your detailed analysis'}</p>
+                    <button className="an-btn an-btn--hero" onClick={() => navigate('/test')}>
+                        <Icon name="plus" size={20} />
+                        Take a Mock Test
                     </button>
-                </div>
-            </div>
-        );
-    }
 
-    // No analysis
-    if (!analysis) {
-        return (
-            <div className="analysis">
-                <div className="error-state">
-                    <Icon name="clipboard" size={48} />
-                    <h2>No Test Data</h2>
-                    <p>Complete a test to see your analysis</p>
-                    <button className="btn btn--primary" onClick={() => navigate('/test')}>
-                        Take a Test
-                    </button>
+                    <div className="an-empty__info">
+                        <div className="an-info-card">
+                            <Icon name="chart" size={24} />
+                            <h4>Performance Breakdown</h4>
+                            <p>See your score across all sections</p>
+                        </div>
+                        <div className="an-info-card">
+                            <Icon name="agents" size={24} />
+                            <h4>AI Insights</h4>
+                            <p>Get personalized improvement tips</p>
+                        </div>
+                        <div className="an-info-card">
+                            <Icon name="target" size={24} />
+                            <h4>Weak Areas</h4>
+                            <p>Identify topics to focus on</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         );
     }
 
     const percentage = analysis.percentage || Math.round((analysis.score / analysis.totalMarks) * 100);
+    const grade = getGrade(percentage);
 
     return (
-        <div className="analysis">
-            {/* Header */}
-            <header className="analysis__header">
-                <div>
-                    <h1 className="analysis__title">
-                        <Icon name="chart" size={32} className="text-accent" style={{ marginRight: 12 }} />
-                        Test Analysis
-                    </h1>
-                    <p className="analysis__subtitle">{analysis.testName}</p>
+        <div className="an-page">
+            {/* Hero Score Section */}
+            <div className="an-hero">
+                <div className="an-hero__bg">
+                    <div
+                        className="an-hero__gradient"
+                        style={{ background: `linear-gradient(135deg, ${getScoreColor(percentage)}40, transparent)` }}
+                    ></div>
                 </div>
+
+                <div className="an-hero__content">
+                    <div className="an-hero__test-info">
+                        <span className="an-hero__badge">Analysis Complete</span>
+                        <h1 className="an-hero__title">{analysis.testName}</h1>
+                    </div>
+
+                    <div className="an-hero__score-display">
+                        <div
+                            className="an-score-ring"
+                            style={{
+                                background: `conic-gradient(${getScoreColor(percentage)} ${percentage * 3.6}deg, var(--bg-tertiary) 0deg)`
+                            }}
+                        >
+                            <div className="an-score-ring__inner">
+                                <span className="an-score-ring__value">{percentage}%</span>
+                                <span className="an-score-ring__label">{analysis.score}/{analysis.totalMarks}</span>
+                            </div>
+                        </div>
+
+                        <div className="an-grade">
+                            <span className="an-grade__letter" style={{ color: getScoreColor(percentage) }}>
+                                {grade.letter}
+                            </span>
+                            <span className="an-grade__label">{grade.label}</span>
+                        </div>
+                    </div>
+                </div>
+
                 <button
-                    className="btn btn--primary"
+                    className="an-btn an-btn--primary"
                     onClick={() => navigate('/agents', { state: { attemptId: attemptData?.attemptId } })}
                 >
-                    <Icon name="agents" size={16} />
-                    AI Analysis
+                    <Icon name="agents" size={18} />
+                    Get AI Analysis
                 </button>
-            </header>
+            </div>
 
-            {/* Score Overview */}
-            <section className="score-overview">
-                <div className="score-card main-score">
-                    <div
-                        className="score-circle"
-                        style={{
-                            background: `conic-gradient(${getScoreColor(percentage)} ${percentage * 3.6}deg, #1e1e2e ${percentage * 3.6}deg)`
-                        }}
-                    >
-                        <div className="score-circle__inner">
-                            <span className="score-value">{percentage}%</span>
-                            <span className="score-label">{analysis.score}/{analysis.totalMarks}</span>
-                        </div>
+            {/* Stats Grid */}
+            <div className="an-stats">
+                <div className="an-stat" style={{ '--stat-color': '#10b981' }}>
+                    <div className="an-stat__icon">
+                        <Icon name="check" size={24} />
                     </div>
-                    <h3>Overall Score</h3>
+                    <div className="an-stat__content">
+                        <span className="an-stat__value">{analysis.correct || Math.round(analysis.score / 3)}</span>
+                        <span className="an-stat__label">Correct</span>
+                    </div>
                 </div>
+                <div className="an-stat" style={{ '--stat-color': '#ef4444' }}>
+                    <div className="an-stat__icon">
+                        <Icon name="x" size={24} />
+                    </div>
+                    <div className="an-stat__content">
+                        <span className="an-stat__value">{analysis.incorrect || 0}</span>
+                        <span className="an-stat__label">Incorrect</span>
+                    </div>
+                </div>
+                <div className="an-stat" style={{ '--stat-color': '#6b7280' }}>
+                    <div className="an-stat__icon">
+                        <Icon name="minus" size={24} />
+                    </div>
+                    <div className="an-stat__content">
+                        <span className="an-stat__value">{analysis.unattempted || 0}</span>
+                        <span className="an-stat__label">Skipped</span>
+                    </div>
+                </div>
+                <div className="an-stat" style={{ '--stat-color': '#3b82f6' }}>
+                    <div className="an-stat__icon">
+                        <Icon name="clock" size={24} />
+                    </div>
+                    <div className="an-stat__content">
+                        <span className="an-stat__value">{analysis.timeTaken || '—'}</span>
+                        <span className="an-stat__label">Time</span>
+                    </div>
+                </div>
+            </div>
 
-                <div className="score-breakdown">
-                    {analysis.sectionScores ? (
-                        Object.entries(analysis.sectionScores).map(([section, data]) => (
-                            <div
-                                key={section}
-                                className="section-score-card"
-                                style={{ borderLeftColor: getSectionColor(section) }}
-                            >
-                                <h4>{section}</h4>
-                                <div className="section-score-card__value">
-                                    <span className="score">{data.score || 0}</span>
-                                    <span className="total">/{data.total || 0}</span>
+            {/* Section Breakdown */}
+            {analysis.sectionScores && (
+                <div className="an-sections">
+                    <h2>Section-wise Performance</h2>
+                    <div className="an-sections__grid">
+                        {Object.entries(analysis.sectionScores).map(([section, data]) => {
+                            const sectionPct = data.total ? Math.round((data.score / data.total) * 100) : 0;
+                            return (
+                                <div
+                                    key={section}
+                                    className="an-section-card"
+                                    style={{ '--section-color': getSectionColor(section) }}
+                                >
+                                    <div className="an-section-card__header">
+                                        <h3>{section}</h3>
+                                        <span className="an-section-card__pct">{sectionPct}%</span>
+                                    </div>
+                                    <div className="an-section-card__score">
+                                        <span className="obtained">{data.score || 0}</span>
+                                        <span className="total">/{data.total || 0}</span>
+                                    </div>
+                                    <div className="an-section-card__bar">
+                                        <div
+                                            className="an-section-card__fill"
+                                            style={{ width: `${sectionPct}%` }}
+                                        ></div>
+                                    </div>
                                 </div>
-                                <div className="section-score-card__bar">
-                                    <div
-                                        className="bar-fill"
-                                        style={{
-                                            width: `${data.total ? (data.score / data.total) * 100 : 0}%`,
-                                            background: getSectionColor(section)
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                        ))
-                    ) : (
-                        <div className="no-sections">
-                            <p>Section-wise breakdown will be available after AI analysis</p>
-                            <button
-                                className="btn btn--secondary"
-                                onClick={() => navigate('/agents', { state: { attemptId: attemptData?.attemptId } })}
-                            >
-                                Get AI Analysis
-                            </button>
-                        </div>
-                    )}
-                </div>
-            </section>
-
-            {/* Quick Stats */}
-            <section className="quick-stats">
-                <div className="stat-card">
-                    <Icon name="check" size={24} />
-                    <div className="stat-card__content">
-                        <span className="stat-value">
-                            {analysis.correct || Math.round(analysis.score / 3)}
-                        </span>
-                        <span className="stat-label">Correct</span>
+                            );
+                        })}
                     </div>
                 </div>
-                <div className="stat-card">
-                    <Icon name="x" size={24} />
-                    <div className="stat-card__content">
-                        <span className="stat-value">
-                            {analysis.incorrect || 0}
-                        </span>
-                        <span className="stat-label">Incorrect</span>
-                    </div>
-                </div>
-                <div className="stat-card">
-                    <Icon name="minus" size={24} />
-                    <div className="stat-card__content">
-                        <span className="stat-value">
-                            {analysis.unattempted || 0}
-                        </span>
-                        <span className="stat-label">Skipped</span>
-                    </div>
-                </div>
-                <div className="stat-card">
-                    <Icon name="clock" size={24} />
-                    <div className="stat-card__content">
-                        <span className="stat-value">
-                            {analysis.timeTaken || '0m'}
-                        </span>
-                        <span className="stat-label">Time Taken</span>
-                    </div>
-                </div>
-            </section>
+            )}
 
             {/* Action Cards */}
-            <section className="action-cards">
-                <div
-                    className="action-card hover-lift"
-                    onClick={() => navigate('/agents', { state: { attemptId: attemptData?.attemptId } })}
-                >
-                    <div className="action-card__icon" style={{ background: '#8b5cf620', color: '#8b5cf6' }}>
+            <div className="an-actions">
+                <div className="an-action" onClick={() => navigate('/agents', { state: { attemptId: attemptData?.attemptId } })}>
+                    <div className="an-action__icon" style={{ background: '#8b5cf620', color: '#8b5cf6' }}>
                         <Icon name="agents" size={28} />
                     </div>
-                    <h3>AI Agent Analysis</h3>
-                    <p>Get detailed insights from our AI agents</p>
-                    <span className="action-card__arrow">→</span>
+                    <div className="an-action__content">
+                        <h3>AI Agent Analysis</h3>
+                        <p>Get detailed insights from our AI agents</p>
+                    </div>
+                    <Icon name="arrowRight" size={20} className="an-action__arrow" />
                 </div>
 
-                <div
-                    className="action-card hover-lift"
-                    onClick={() => navigate('/roadmap')}
-                >
-                    <div className="action-card__icon" style={{ background: '#10b98120', color: '#10b981' }}>
+                <div className="an-action" onClick={() => navigate('/roadmap')}>
+                    <div className="an-action__icon" style={{ background: '#10b98120', color: '#10b981' }}>
                         <Icon name="roadmap" size={28} />
                     </div>
-                    <h3>Study Roadmap</h3>
-                    <p>View your personalized study plan</p>
-                    <span className="action-card__arrow">→</span>
+                    <div className="an-action__content">
+                        <h3>Study Roadmap</h3>
+                        <p>View your personalized study plan</p>
+                    </div>
+                    <Icon name="arrowRight" size={20} className="an-action__arrow" />
                 </div>
 
-                <div
-                    className="action-card hover-lift"
-                    onClick={() => navigate('/test')}
-                >
-                    <div className="action-card__icon" style={{ background: '#3b82f620', color: '#3b82f6' }}>
+                <div className="an-action" onClick={() => navigate('/test')}>
+                    <div className="an-action__icon" style={{ background: '#3b82f620', color: '#3b82f6' }}>
                         <Icon name="clipboard" size={28} />
                     </div>
-                    <h3>Take Another Test</h3>
-                    <p>Practice more to improve</p>
-                    <span className="action-card__arrow">→</span>
+                    <div className="an-action__content">
+                        <h3>Take Another Test</h3>
+                        <p>Practice more to improve your score</p>
+                    </div>
+                    <Icon name="arrowRight" size={20} className="an-action__arrow" />
                 </div>
-            </section>
+            </div>
 
             {/* Performance Message */}
-            <section className="performance-message">
-                <div className={`message-card ${percentage >= 70 ? 'success' : percentage >= 50 ? 'warning' : 'danger'}`}>
-                    <Icon name={percentage >= 70 ? 'trophy' : percentage >= 50 ? 'target' : 'flag'} size={24} />
-                    <div>
-                        <h4>
-                            {percentage >= 70
-                                ? 'Great Performance!'
-                                : percentage >= 50
-                                    ? 'Good Effort!'
-                                    : 'Keep Practicing!'}
-                        </h4>
-                        <p>
-                            {percentage >= 70
-                                ? 'You\'re doing excellent! Keep up the good work.'
-                                : percentage >= 50
-                                    ? 'You\'re on the right track. Focus on weak areas.'
-                                    : 'Review the topics and practice more. You\'ll improve!'}
-                        </p>
-                    </div>
+            <div className={`an-message an-message--${percentage >= 70 ? 'success' : percentage >= 50 ? 'warning' : 'danger'}`}>
+                <Icon name={percentage >= 70 ? 'trophy' : percentage >= 50 ? 'target' : 'flag'} size={24} />
+                <div>
+                    <h4>
+                        {percentage >= 70 ? 'Great Performance!' : percentage >= 50 ? 'Good Effort!' : 'Keep Practicing!'}
+                    </h4>
+                    <p>
+                        {percentage >= 70
+                            ? 'You\'re doing excellent! Keep up the momentum.'
+                            : percentage >= 50
+                                ? 'You\'re on the right track. Focus on your weak areas.'
+                                : 'Review the topics and practice more. You\'ll improve!'}
+                    </p>
                 </div>
-            </section>
+            </div>
         </div>
     );
 }

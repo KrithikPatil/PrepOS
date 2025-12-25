@@ -1,42 +1,41 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { studentService } from '../../services';
 import Icon from '../../components/Icon/Icon';
 import './Roadmap.css';
 
 /**
- * Roadmap Page Component
- * Personalized study roadmap fetched from real backend API
+ * Roadmap Page - Premium Personalized Study Plan
  */
 function Roadmap() {
+    const navigate = useNavigate();
     const [roadmap, setRoadmap] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [expandedWeek, setExpandedWeek] = useState(null);
 
-    // Fetch roadmap from API
     useEffect(() => {
-        const fetchRoadmap = async () => {
-            try {
-                const result = await studentService.getRoadmap();
-
-                if (result.success && result.roadmap) {
-                    setRoadmap(result.roadmap);
-                    // Expand first week by default
-                    if (result.roadmap.weeklyPlan?.length > 0) {
-                        setExpandedWeek(0);
-                    }
-                } else {
-                    setError(result.error || 'Failed to load roadmap');
-                }
-            } catch (err) {
-                setError(err.message);
-            } finally {
-                setLoading(false);
-            }
-        };
-
         fetchRoadmap();
     }, []);
+
+    const fetchRoadmap = async () => {
+        try {
+            const result = await studentService.getRoadmap();
+
+            if (result.success && result.roadmap) {
+                setRoadmap(result.roadmap);
+                if (result.roadmap.weeklyPlan?.length > 0) {
+                    setExpandedWeek(0);
+                }
+            } else {
+                setError(result.error || 'No roadmap available');
+            }
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const formatDuration = (minutes) => {
         if (!minutes) return '';
@@ -70,150 +69,159 @@ function Roadmap() {
         return colors[type] || '#6b7280';
     };
 
-    // Loading state
+    // Loading
     if (loading) {
         return (
-            <div className="roadmap">
-                <div className="loading-state">
-                    <div className="loading-spinner"></div>
+            <div className="rm-page">
+                <div className="rm-loading">
+                    <div className="rm-loading__spinner"></div>
                     <p>Loading your personalized roadmap...</p>
                 </div>
             </div>
         );
     }
 
-    // Error state
-    if (error) {
-        return (
-            <div className="roadmap">
-                <div className="error-state">
-                    <Icon name="alertTriangle" size={48} />
-                    <h2>Failed to load roadmap</h2>
-                    <p>{error}</p>
-                    <button className="btn btn--primary" onClick={() => window.location.reload()}>
-                        Try Again
-                    </button>
-                </div>
+    // Shared Hero Component
+    const HeroSection = ({ hasData }) => (
+        <div className="rm-hero">
+            <div className="rm-hero__bg">
+                <div className="rm-hero__gradient"></div>
+                <div className="rm-hero__pattern"></div>
             </div>
-        );
-    }
 
-    // No roadmap yet - show prompt to take a test
-    if (!roadmap || !roadmap.weeklyPlan || roadmap.weeklyPlan.length === 0) {
+            <div className="rm-hero__content">
+                <h1 className="rm-hero__title">
+                    Study <span>Roadmap</span>
+                </h1>
+                <p className="rm-hero__subtitle">
+                    {hasData
+                        ? `${roadmap?.daysUntilExam || '60'} days until CAT - Your AI-generated study plan`
+                        : 'Get a personalized study plan based on your performance'}
+                </p>
+            </div>
+
+            {hasData && roadmap?.daysUntilExam && (
+                <div className="rm-hero__countdown">
+                    <div className="rm-countdown">
+                        <span className="rm-countdown__value">{roadmap.daysUntilExam}</span>
+                        <span className="rm-countdown__label">Days Left</span>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+
+    // Error / Empty State
+    if (error || !roadmap || !roadmap.weeklyPlan || roadmap.weeklyPlan.length === 0) {
         return (
-            <div className="roadmap">
-                <header className="roadmap__header">
-                    <h1 className="roadmap__title">
-                        <Icon name="roadmap" size={32} className="text-accent" style={{ marginRight: 12 }} />
-                        Your Study Roadmap
-                    </h1>
-                    <p className="roadmap__subtitle">
-                        Complete a mock test to get your personalized CAT preparation roadmap
-                    </p>
-                </header>
+            <div className="rm-page">
+                <HeroSection hasData={false} />
 
-                <div className="roadmap-empty">
-                    <div className="roadmap-empty__icon">
-                        <Icon name="chart" size={64} />
+                <div className="rm-empty">
+                    <div className="rm-empty__illustration">
+                        <div className="rm-empty__circle">
+                            <Icon name="roadmap" size={64} />
+                        </div>
+                        <div className="rm-empty__orbit">
+                            <div className="rm-empty__dot"></div>
+                        </div>
                     </div>
                     <h2>No Roadmap Yet</h2>
                     <p>Take a mock test first, and our AI Strategist will create a personalized study plan for you.</p>
-                    <a href="/test" className="btn btn--primary btn-shine">
+                    <button className="rm-btn rm-btn--hero" onClick={() => navigate('/test')}>
+                        <Icon name="plus" size={20} />
                         Take a Mock Test
-                        <Icon name="arrowRight" size={16} />
-                    </a>
+                    </button>
+
+                    <div className="rm-empty__features">
+                        <div className="rm-feature">
+                            <div className="rm-feature__icon">
+                                <Icon name="calendar" size={24} />
+                            </div>
+                            <h4>Weekly Schedule</h4>
+                            <p>Structured week-by-week plan</p>
+                        </div>
+                        <div className="rm-feature">
+                            <div className="rm-feature__icon">
+                                <Icon name="target" size={24} />
+                            </div>
+                            <h4>Focus Areas</h4>
+                            <p>Topics that need attention</p>
+                        </div>
+                        <div className="rm-feature">
+                            <div className="rm-feature__icon">
+                                <Icon name="trophy" size={24} />
+                            </div>
+                            <h4>Milestones</h4>
+                            <p>Track your progress goals</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="roadmap">
-            {/* Header */}
-            <header className="roadmap__header">
-                <div>
-                    <h1 className="roadmap__title">
-                        <Icon name="roadmap" size={32} className="text-accent" style={{ marginRight: 12 }} />
-                        Your CAT Roadmap
-                    </h1>
-                    <p className="roadmap__subtitle">
-                        {roadmap.message || `${roadmap.daysUntilExam} days until CAT - Your personalized study plan`}
-                    </p>
-                </div>
-                {roadmap.daysUntilExam && (
-                    <div className="days-counter">
-                        <span className="days-counter__value">{roadmap.daysUntilExam}</span>
-                        <span className="days-counter__label">Days Left</span>
-                    </div>
-                )}
-            </header>
+        <div className="rm-page">
+            <HeroSection hasData={true} />
 
             {/* Focus Areas */}
             {roadmap.focusAreas && roadmap.focusAreas.length > 0 && (
-                <section className="focus-areas">
+                <section className="rm-focus">
                     <h2>
-                        <Icon name="target" size={20} style={{ marginRight: 8 }} />
+                        <Icon name="target" size={20} />
                         Focus Areas
                     </h2>
-                    <div className="focus-tags">
+                    <div className="rm-focus__tags">
                         {roadmap.focusAreas.map((area, idx) => (
-                            <span key={idx} className="focus-tag">{area}</span>
+                            <span key={idx} className="rm-focus__tag">{area}</span>
                         ))}
                     </div>
                 </section>
             )}
 
             {/* Weekly Plan */}
-            <section className="weekly-plan">
+            <section className="rm-weeks">
                 <h2>
-                    <Icon name="calendar" size={20} style={{ marginRight: 8 }} />
+                    <Icon name="calendar" size={20} />
                     Weekly Schedule
                 </h2>
 
-                <div className="weeks-list">
+                <div className="rm-weeks__list">
                     {roadmap.weeklyPlan.map((week, weekIdx) => (
                         <div
                             key={weekIdx}
-                            className={`week-card ${expandedWeek === weekIdx ? 'expanded' : ''}`}
+                            className={`rm-week ${expandedWeek === weekIdx ? 'expanded' : ''}`}
                         >
                             <div
-                                className="week-card__header"
+                                className="rm-week__header"
                                 onClick={() => setExpandedWeek(expandedWeek === weekIdx ? null : weekIdx)}
                             >
-                                <div className="week-card__info">
-                                    <span className="week-number">Week {weekIdx + 1}</span>
+                                <div className="rm-week__info">
+                                    <span className="rm-week__number">Week {weekIdx + 1}</span>
                                     <h3>{week.theme || `Week ${weekIdx + 1} Tasks`}</h3>
                                 </div>
-                                <div className="week-card__meta">
+                                <div className="rm-week__meta">
                                     <span>{week.tasks?.length || 0} tasks</span>
-                                    <Icon
-                                        name={expandedWeek === weekIdx ? 'chevronUp' : 'chevronDown'}
-                                        size={20}
-                                    />
+                                    <Icon name={expandedWeek === weekIdx ? 'chevronUp' : 'chevronDown'} size={20} />
                                 </div>
                             </div>
 
                             {expandedWeek === weekIdx && week.tasks && (
-                                <div className="week-card__tasks">
+                                <div className="rm-week__tasks">
                                     {week.tasks.map((task, taskIdx) => (
                                         <div
                                             key={taskIdx}
-                                            className="task-item"
-                                            style={{ borderLeftColor: getTaskTypeColor(task.type) }}
+                                            className="rm-task"
+                                            style={{ '--task-color': getTaskTypeColor(task.type) }}
                                         >
-                                            <div className="task-item__icon">
-                                                <Icon
-                                                    name={getTaskTypeIcon(task.type)}
-                                                    size={18}
-                                                    style={{ color: getTaskTypeColor(task.type) }}
-                                                />
+                                            <div className="rm-task__icon">
+                                                <Icon name={getTaskTypeIcon(task.type)} size={18} />
                                             </div>
-                                            <div className="task-item__content">
+                                            <div className="rm-task__content">
                                                 <h4>{task.title}</h4>
-                                                {task.description && (
-                                                    <p>{task.description}</p>
-                                                )}
-                                                <div className="task-item__meta">
+                                                {task.description && <p>{task.description}</p>}
+                                                <div className="rm-task__meta">
                                                     {task.duration && (
                                                         <span>
                                                             <Icon name="clock" size={12} />
@@ -226,7 +234,7 @@ function Roadmap() {
                                                             {task.day}
                                                         </span>
                                                     )}
-                                                    <span className="task-type-label">
+                                                    <span className="rm-task__type">
                                                         {task.type?.replace('_', ' ')}
                                                     </span>
                                                 </div>
@@ -242,22 +250,22 @@ function Roadmap() {
 
             {/* Milestones */}
             {roadmap.milestones && roadmap.milestones.length > 0 && (
-                <section className="milestones">
+                <section className="rm-milestones">
                     <h2>
-                        <Icon name="trophy" size={20} style={{ marginRight: 8 }} />
+                        <Icon name="trophy" size={20} />
                         Milestones
                     </h2>
-                    <div className="milestones-list">
+                    <div className="rm-milestones__grid">
                         {roadmap.milestones.map((milestone, idx) => (
-                            <div key={idx} className="milestone-card">
-                                <div className="milestone-card__icon">
+                            <div key={idx} className="rm-milestone">
+                                <div className="rm-milestone__icon">
                                     <Icon name="flag" size={24} />
                                 </div>
-                                <div className="milestone-card__content">
+                                <div className="rm-milestone__content">
                                     <h4>{milestone.title}</h4>
                                     <p>{milestone.criteria}</p>
                                     {milestone.targetDate && (
-                                        <span className="milestone-date">
+                                        <span className="rm-milestone__date">
                                             <Icon name="calendar" size={12} />
                                             {milestone.targetDate}
                                         </span>
