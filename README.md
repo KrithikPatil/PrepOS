@@ -1,8 +1,8 @@
-# 🎯 PrepOS - AI-Powered CAT Exam Preparation Platform
+# PrepOS - AI-Powered CAT Exam Preparation Platform
 
 <div align="center">
 
-![PrepOS Logo](https://img.shields.io/badge/PrepOS-CAT%202025-6366f1?style=for-the-badge)
+![PrepOS](https://img.shields.io/badge/PrepOS-CAT%202025-6366f1?style=for-the-badge)
 ![React](https://img.shields.io/badge/React-18.x-61dafb?style=flat-square&logo=react)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.104-009688?style=flat-square&logo=fastapi)
 ![MongoDB](https://img.shields.io/badge/MongoDB-7.x-47a248?style=flat-square&logo=mongodb)
@@ -14,51 +14,142 @@
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
-- [Features](#-features)
-- [Tech Stack](#-tech-stack)
-- [Quick Start](#-quick-start)
-- [Detailed Setup](#-detailed-setup)
+- [Overview](#overview)
+- [Architecture](#architecture)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Quick Start](#quick-start)
+- [Detailed Setup](#detailed-setup)
   - [Linux/macOS](#linuxmacos-setup)
   - [Windows](#windows-setup)
-- [Project Structure](#-project-structure)
-- [API Documentation](#-api-documentation)
-- [AI Agents](#-ai-agents)
+- [Project Structure](#project-structure)
+- [API Documentation](#api-documentation)
+- [AI Agents](#ai-agents)
+- [License](#license)
 
 ---
 
-## ✨ Features
+## Overview
 
-- 🧠 **4 AI Agents** - Architect, Detective, Tutor, Strategist
-- 📝 **CAT Mock Tests** - Full-length and sectional tests
-- 📊 **Performance Analytics** - Section-wise and topic-wise analysis
-- 🗺️ **Personalized Roadmap** - AI-generated study plans
-- 🔐 **Google OAuth** - Secure authentication
-- 🎨 **Premium Dark UI** - Modern, responsive design
+PrepOS is an AI-powered preparation platform exclusively designed for CAT (Common Admission Test) aspirants. It leverages a multi-agent AI system built on Google Gemini to provide personalized learning experiences, intelligent test analysis, and adaptive study roadmaps.
 
 ---
 
-## 🛠️ Tech Stack
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              PREPOS ARCHITECTURE                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                 CLIENT LAYER                                 │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐ │
+│  │  Dashboard  │  │  Mock Test  │  │  Analysis   │  │  AI Agent Swarm     │ │
+│  │    Page     │  │    Page     │  │    Page     │  │       Page          │ │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘  └──────────┬──────────┘ │
+│         │                │                │                     │            │
+│  ┌──────┴────────────────┴────────────────┴─────────────────────┴──────────┐│
+│  │                        React 18 + React Router                          ││
+│  │                     Service Layer (API Client + Auth)                   ││
+│  └─────────────────────────────────┬───────────────────────────────────────┘│
+└────────────────────────────────────│────────────────────────────────────────┘
+                                     │ HTTP/REST
+                                     ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                 API GATEWAY                                  │
+│  ┌─────────────────────────────────────────────────────────────────────────┐│
+│  │                    FastAPI (Uvicorn ASGI Server)                        ││
+│  │                         Port 3001                                        ││
+│  └─────────────────────────────────┬───────────────────────────────────────┘│
+│                                    │                                         │
+│  ┌──────────────┬──────────────────┼──────────────────┬───────────────────┐ │
+│  │              │                  │                  │                   │ │
+│  ▼              ▼                  ▼                  ▼                   │ │
+│ /auth        /tests            /agents           /students               │ │
+│ Routes       Routes            Routes            Routes                   │ │
+└──────────────────────────────────────────────────────────────────────────────┘
+                                     │
+                                     ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              AI AGENT LAYER                                  │
+│                                                                              │
+│  ┌───────────────┐  ┌───────────────┐  ┌───────────────┐  ┌──────────────┐ │
+│  │   ARCHITECT   │  │   DETECTIVE   │  │    TUTOR      │  │  STRATEGIST  │ │
+│  │               │  │               │  │               │  │              │ │
+│  │  Generates    │  │  Analyzes     │  │  Provides     │  │  Creates     │ │
+│  │  Personalized │  │  Mistakes &   │  │  Socratic     │  │  Personalized│ │
+│  │  Questions    │  │  Patterns     │  │  Explanations │  │  Roadmaps    │ │
+│  │               │  │               │  │               │  │              │ │
+│  │ gemini-2.5-pro│  │gemini-2.5-flash│ │ gemini-2.5-pro│  │gemini-2.5-flash│
+│  └───────┬───────┘  └───────┬───────┘  └───────┬───────┘  └──────┬───────┘ │
+│          │                  │                  │                 │          │
+│  ┌───────┴──────────────────┴──────────────────┴─────────────────┴───────┐  │
+│  │                        Gemini Client                                   │  │
+│  │            (Rate Limiting, Retry Logic, Error Handling)               │  │
+│  └───────────────────────────────────┬───────────────────────────────────┘  │
+└──────────────────────────────────────│──────────────────────────────────────┘
+                                       │
+                                       ▼
+                            ┌─────────────────────┐
+                            │   Google Gemini API │
+                            │    (Cloud AI)       │
+                            └─────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              DATA LAYER                                      │
+│  ┌─────────────────────────────────────────────────────────────────────────┐│
+│  │                         MongoDB (Motor Async)                           ││
+│  │                                                                          ││
+│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐  ││
+│  │  │  users   │  │  tests   │  │questions │  │ attempts │  │ roadmaps │  ││
+│  │  └──────────┘  └──────────┘  └──────────┘  └──────────┘  └──────────┘  ││
+│  └─────────────────────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           AUTHENTICATION FLOW                                │
+│                                                                              │
+│  User ──► Login Page ──► Google OAuth 2.0 ──► JWT Token ──► Protected Routes│
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Features
+
+- **Multi-Agent AI System** - Four specialized agents for comprehensive analysis
+- **CAT Mock Tests** - Full-length and sectional tests with real exam patterns
+- **Performance Analytics** - Section-wise and topic-wise performance tracking
+- **Personalized Roadmap** - AI-generated study plans based on weaknesses
+- **Google OAuth** - Secure authentication with Google accounts
+- **Premium Dark UI** - Modern, responsive interface optimized for focus
+
+---
+
+## Tech Stack
 
 | Layer | Technology |
 |-------|------------|
 | Frontend | React 18, CSS3, React Router |
 | Backend | Python 3.11+, FastAPI, Uvicorn |
-| Database | MongoDB 7.x |
+| Database | MongoDB 7.x with Motor (async) |
 | AI | Google Gemini (gemini-2.5-pro, gemini-2.5-flash) |
-| Auth | Google OAuth 2.0, JWT |
+| Auth | Google OAuth 2.0, JWT (python-jose) |
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ```bash
-# Clone the repo
+# Clone the repository
 git clone https://github.com/KrithikPatil/PrepOS.git
 cd PrepOS
 
-# Install frontend
+# Install frontend dependencies
 npm install
 
 # Setup backend
@@ -69,9 +160,9 @@ pip install -r requirements.txt
 
 # Configure environment
 cp .env.example .env
-# Edit .env with your keys
+# Edit .env with your API keys
 
-# Start both servers
+# Start servers
 cd ..
 npm start &
 cd server && python -m uvicorn main:app --port 3001
@@ -79,14 +170,14 @@ cd server && python -m uvicorn main:app --port 3001
 
 ---
 
-## 📖 Detailed Setup
+## Detailed Setup
 
 ### Prerequisites
 
-- **Node.js** 18.x or higher
-- **Python** 3.11 or higher
-- **MongoDB** 7.x (local or Atlas)
-- **Git**
+- Node.js 18.x or higher
+- Python 3.11 or higher
+- MongoDB 7.x (local or Atlas)
+- Git
 
 ---
 
@@ -113,60 +204,34 @@ cd PrepOS
 #### 3. Setup Frontend
 
 ```bash
-# Install Node dependencies
 npm install
-
-# Verify installation
-npm --version
 ```
 
 #### 4. Setup Backend
 
 ```bash
-# Navigate to server
 cd server
-
-# Create Python virtual environment
 python3 -m venv venv
-
-# Activate virtual environment
 source venv/bin/activate
-
-# Install Python dependencies
 pip install -r requirements.txt
-
-# Verify installation
-python --version
-pip list
 ```
 
 #### 5. Configure Environment
 
 ```bash
-# Copy example env file
 cp .env.example .env
-
-# Edit with your values
 nano .env
 ```
 
-**Required variables in `server/.env`:**
+Required variables in `server/.env`:
+
 ```env
-# MongoDB
 MONGODB_URI=mongodb://localhost:27017
-
-# JWT Secret (generate a random string)
-JWT_SECRET=your-super-secret-key-here
-
-# Gemini AI
+JWT_SECRET=your-secret-key-here
 GEMINI_API_KEY=your-gemini-api-key
-
-# Google OAuth (optional for dev)
 GOOGLE_CLIENT_ID=your-client-id
 GOOGLE_CLIENT_SECRET=your-client-secret
 GOOGLE_REDIRECT_URI=http://localhost:3001/api/auth/google/callback
-
-# Frontend URL
 FRONTEND_URL=http://localhost:3000
 ```
 
@@ -190,14 +255,14 @@ python -m db.migrate
 
 #### 8. Start Servers
 
-**Terminal 1 - Backend:**
+Terminal 1 (Backend):
 ```bash
 cd PrepOS/server
 source venv/bin/activate
 python -m uvicorn main:app --host 0.0.0.0 --port 3001 --reload
 ```
 
-**Terminal 2 - Frontend:**
+Terminal 2 (Frontend):
 ```bash
 cd PrepOS
 npm start
@@ -215,18 +280,17 @@ npm start
 
 #### 1. Install Prerequisites
 
-**Option A: Using Chocolatey (Recommended)**
+Using Chocolatey (recommended):
 ```powershell
-# Install Chocolatey first (Run PowerShell as Admin)
+# Install Chocolatey (Run PowerShell as Admin)
 Set-ExecutionPolicy Bypass -Scope Process -Force
-[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
 iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
 
 # Install dependencies
 choco install nodejs python311 mongodb git -y
 ```
 
-**Option B: Manual Installation**
+Manual installation:
 - Node.js: https://nodejs.org/
 - Python 3.11: https://www.python.org/downloads/
 - MongoDB: https://www.mongodb.com/try/download/community
@@ -242,47 +306,26 @@ cd PrepOS
 #### 3. Setup Frontend
 
 ```powershell
-# Install Node dependencies
 npm install
 ```
 
 #### 4. Setup Backend
 
 ```powershell
-# Navigate to server
 cd server
-
-# Create Python virtual environment
 python -m venv venv
-
-# Activate virtual environment (Windows)
 .\venv\Scripts\activate
-
-# Install Python dependencies
 pip install -r requirements.txt
 ```
 
 #### 5. Configure Environment
 
 ```powershell
-# Copy example env file
 copy .env.example .env
-
-# Edit with notepad or your editor
 notepad .env
 ```
 
-Fill in the same variables as shown in the Linux section.
-
-#### 6. Start MongoDB
-
-```powershell
-# If installed as a service, it should auto-start
-# Or start manually:
-"C:\Program Files\MongoDB\Server\7.0\bin\mongod.exe"
-```
-
-#### 7. Run Database Migration
+#### 6. Run Database Migration
 
 ```powershell
 cd server
@@ -290,29 +333,24 @@ cd server
 python -m db.migrate
 ```
 
-#### 8. Start Servers
+#### 7. Start Servers
 
-**Terminal 1 - Backend (PowerShell):**
+Terminal 1 (Backend):
 ```powershell
 cd PrepOS\server
 .\venv\Scripts\activate
 python -m uvicorn main:app --host 0.0.0.0 --port 3001 --reload
 ```
 
-**Terminal 2 - Frontend (PowerShell):**
+Terminal 2 (Frontend):
 ```powershell
 cd PrepOS
 npm start
 ```
 
-#### 9. Access Application
-
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:3001/api
-
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 PrepOS/
@@ -329,61 +367,63 @@ PrepOS/
 │   ├── config/             # App configuration
 │   └── db/                 # Database models and migrations
 ├── .env.example            # Environment template
-└── README.md               # This file
+└── README.md               # Documentation
 ```
 
 ---
 
-## 🔌 API Documentation
+## API Documentation
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/auth/google` | GET | Start Google OAuth |
-| `/api/auth/dev-login` | POST | Dev login (debug mode) |
+| `/api/auth/google` | GET | Initiate Google OAuth flow |
+| `/api/auth/dev-login` | POST | Development login (debug mode only) |
 | `/api/tests/` | GET | List available tests |
 | `/api/tests/{id}` | GET | Get test with questions |
 | `/api/tests/{id}/submit` | POST | Submit test answers |
-| `/api/agents/analyze` | POST | Start AI analysis |
+| `/api/agents/analyze` | POST | Start AI analysis job |
+| `/api/agents/status/{job_id}` | GET | Get analysis status |
 | `/api/students/profile` | GET | Get user profile |
-| `/api/students/roadmap` | GET | Get study roadmap |
+| `/api/students/attempts` | GET | Get test attempt history |
+| `/api/students/roadmap` | GET | Get personalized roadmap |
 
-Full API docs: http://localhost:3001/docs
+Interactive API documentation available at: http://localhost:3001/docs
 
 ---
 
-## 🤖 AI Agents
+## AI Agents
 
 | Agent | Model | Purpose |
 |-------|-------|---------|
-| **Architect** | gemini-2.5-pro | Generates personalized practice questions |
-| **Detective** | gemini-2.5-flash | Analyzes mistakes and time patterns |
-| **Tutor** | gemini-2.5-pro | Provides Socratic explanations |
-| **Strategist** | gemini-2.5-flash | Creates personalized roadmaps |
+| Architect | gemini-2.5-pro | Generates personalized practice questions targeting weak areas |
+| Detective | gemini-2.5-flash | Analyzes mistake patterns and time management issues |
+| Tutor | gemini-2.5-pro | Provides Socratic-style explanations for conceptual clarity |
+| Strategist | gemini-2.5-flash | Creates week-by-week personalized study roadmaps |
 
 ---
 
-## 🔑 Getting API Keys
+## Getting API Keys
 
 ### Gemini API Key
-1. Go to https://aistudio.google.com/apikey
+1. Visit https://aistudio.google.com/apikey
 2. Create a new API key
 3. Add to `server/.env` as `GEMINI_API_KEY`
 
-### Google OAuth (Optional)
+### Google OAuth Credentials
 1. Go to https://console.cloud.google.com/
 2. Create a new project
 3. Enable Google+ API
 4. Create OAuth 2.0 credentials
-5. Add credentials to `server/.env`
+5. Add client ID and secret to `server/.env`
 
 ---
 
-## 📝 License
+## License
 
 MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 
 <div align="center">
-Made with ❤️ for CAT aspirants
+PrepOS - Intelligent CAT Preparation
 </div>
