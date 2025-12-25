@@ -4,7 +4,7 @@ Creates personalized study roadmaps based on performance
 Uses gemini-2.5-flash for planning efficiency
 """
 
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from datetime import datetime, timedelta
 import json
 import logging
@@ -50,7 +50,8 @@ def get_preparation_phase(days: int) -> str:
 async def run(
     user_performance: Dict[str, Any],
     detective_output: Dict[str, Any],
-    architect_output: Dict[str, Any]
+    architect_output: Dict[str, Any],
+    previous_roadmap: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
     Generate personalized study roadmap
@@ -59,6 +60,7 @@ async def run(
         user_performance: Historical performance data
         detective_output: Mistake analysis from Detective agent
         architect_output: Generated questions info from Architect
+        previous_roadmap: The user's most recent roadmap (for updates)
         
     Returns:
         Personalized weekly study roadmap
@@ -101,6 +103,31 @@ async def run(
     }
     recommended_hours = hours_map.get(prep_phase, 20)
     
+    # Format previous roadmap for context
+    prev_roadmap_context = "None (First Roadmap)"
+    if previous_roadmap:
+        # Sanitize for JSON
+        def json_serial(obj):
+            if isinstance(obj, (datetime, datetime.date)):
+                return obj.isoformat()
+            if isinstance(str(obj), str) and len(str(obj)) == 24: # rough check for ObjectId
+                return str(obj)
+            return str(obj)
+
+        try:
+            # Extract key parts to avoid token limits
+            minimal_roadmap = {
+                "generatedAt": previous_roadmap.get("generatedAt"),
+                "focusAreas": previous_roadmap.get("focusAreas"),
+                "milestones": previous_roadmap.get("milestones", [])[-3:], # Last 3 milestones
+                "currentWeek": previous_roadmap.get("weeklyPlan", [])[0] if previous_roadmap.get("weeklyPlan") else None
+            }
+            prev_roadmap_context = json.dumps(minimal_roadmap, default=json_serial, indent=2)
+        except Exception as e:
+            logger.warning(f"Failed to serialize previous roadmap: {e}")
+            prev_roadmap_context = "Error retrieving previous roadmap"
+
+    
     # Build comprehensive prompt
     prompt = f"""## STUDENT PROFILE
 
@@ -125,11 +152,20 @@ async def run(
 - **Preparation Phase**: {prep_phase.replace("_", " ").title()}
 - **Recommended Weekly Hours**: {recommended_hours}
 
+### Previous Roadmap Context
+The student has an existing roadmap. Use this to maintain continuity, but adapt based on the new performance data above.
+{prev_roadmap_context}
+
 ---
 
 ## YOUR TASK
 
-Create a **2-week personalized roadmap** for this student:
+Create an **UPDATED 2-week personalized roadmap** for this student:
+
+### Update Strategy
+- **If performance improved**: Advance to harder topics/drills in the new plan.
+- **If performance stalled**: Add reinforcement tasks for the weak areas identified above.
+- **Milestones**: Check previous milestones. If criteria met (e.g. score > X), mark as 'completed'. Create new ones if needed.
 
 ### Week Structure Guidelines
 - **Phase**: {prep_phase.replace("_", " ").title()}

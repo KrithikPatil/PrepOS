@@ -101,30 +101,84 @@ async def get_attempts(request: Request):
 @router.get("/attempts/{attempt_id}")
 async def get_attempt_detail(attempt_id: str, request: Request):
     """Get detailed attempt with AI analysis"""
-    auth_header = request.headers.get("Authorization")
-    if not auth_header:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+    print(f"🔍 [GET] /attempts/{attempt_id} triggered")
     
-    token = auth_header.split(" ")[1]
-    payload = verify_token(token)
-    
-    attempts_col = get_attempts_collection()
-    attempt = await attempts_col.find_one({"_id": ObjectId(attempt_id)})
-    
-    if not attempt:
-        raise HTTPException(status_code=404, detail="Attempt not found")
-    
-    if str(attempt["userId"]) != payload["sub"]:
-        raise HTTPException(status_code=403, detail="Not your attempt")
-    
-    return {
-        "id": str(attempt["_id"]),
-        "testId": str(attempt["testId"]),
-        "submittedAt": attempt["submittedAt"].isoformat(),
-        "score": attempt["score"],
-        "responses": attempt["responses"],
-        "aiAnalysis": attempt.get("aiAnalysis")
-    }
+    try:
+        # 1. Auth check
+        auth_header = request.headers.get("Authorization")
+        if not auth_header:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+        
+        token = auth_header.split(" ")[1]
+        try:
+            payload = verify_token(token)
+            print(f"✅ Token verified for user: {payload.get('sub')}")
+        except Exception as auth_err:
+             print(f"❌ Token verification failed: {auth_err}")
+             raise HTTPException(status_code=401, detail="Invalid token")
+
+        # 2. DB Connection
+        try:
+            attempts_col = get_attempts_collection()
+            print("✅ DB Collection accessed")
+        except Exception as db_conn_err:
+            print(f"❌ DB Connection failed: {db_conn_err}")
+            raise HTTPException(status_code=500, detail="Database connection error")
+
+        # 3. ID Validation
+        try:
+            oid = ObjectId(attempt_id)
+        except Exception:
+            print(f"❌ Invalid ObjectId: {attempt_id}")
+            raise HTTPException(status_code=400, detail="Invalid attempt ID format")
+            
+        # 4. Fetch Attempt
+        print(f"🔍 Searching for attempt _id: {oid}")
+        attempt = await attempts_col.find_one({"_id": oid})
+        
+        if not attempt:
+            print("❌ Attempt not found in DB")
+            raise HTTPException(status_code=404, detail="Attempt not found")
+        
+        # 5. Ownership Check
+        print(f"✅ Attempt found. Owner: {attempt.get('userId')}")
+        if str(attempt["userId"]) != payload["sub"]:
+            print(f"❌ Ownership mismatch. Requester: {payload['sub']}")
+            raise HTTPException(status_code=403, detail="Not your attempt")
+        
+        # 6. Response Construction
+        response_data = {
+            "id": str(attempt["_id"]),
+            "testId": str(attempt["testId"]),
+            "submittedAt": attempt["submittedAt"].isoformat() if isinstance(attempt["submittedAt"], datetime) else str(attempt["submittedAt"]),
+            "score": attempt["score"],
+            "responses": attempt["responses"],
+            "aiAnalysis": attempt.get("aiAnalysis")
+        }
+        
+        return serialize_mongo_doc(response_data)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"🔥 UNHANDLED ERROR in get_attempt_detail: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
+
+
+def serialize_mongo_doc(data):
+    """Recursively convert ObjectIds to strings for JSON serialization"""
+    if isinstance(data, list):
+        return [serialize_mongo_doc(item) for item in data]
+    elif isinstance(data, dict):
+        return {k: serialize_mongo_doc(v) for k, v in data.items()}
+    elif isinstance(data, ObjectId):
+        return str(data)
+    elif isinstance(data, datetime):
+        return data.isoformat()
+    else:
+        return data
 
 
 @router.get("/roadmap")
@@ -144,14 +198,18 @@ async def get_roadmap(request: Request):
     )
     
     if not roadmap:
-        return {"message": "No roadmap generated yet. Complete a test first!"}
+        return {"success": False, "message": "No roadmap generated yet. Complete a test first!"}
+    
+    # Use serializer to handle all nested ObjectIds and Datetimes
+    serialized_roadmap = serialize_mongo_doc(roadmap)
+    
+    # Ensure ID is a string (already done by serializer, but good for explicit structure)
+    serialized_roadmap["id"] = serialized_roadmap["_id"]
+    del serialized_roadmap["_id"]
     
     return {
-        "id": str(roadmap["_id"]),
-        "generatedAt": roadmap["generatedAt"].isoformat(),
-        "focusAreas": roadmap["focusAreas"],
-        "weeklyPlan": roadmap["weeklyPlan"],
-        "milestones": roadmap["milestones"]
+        "success": True,
+        "roadmap": serialized_roadmap
     }
 
 

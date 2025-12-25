@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { studentService } from '../../services';
+import { studentService, agentService } from '../../services';
 import Icon from '../../components/Icon/Icon';
 import './Analysis.css';
 
@@ -16,6 +16,12 @@ function Analysis() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    // AI Analysis State
+    const [detectiveData, setDetectiveData] = useState(null);
+    const [analyzing, setAnalyzing] = useState(false);
+    const [analysisStatus, setAnalysisStatus] = useState(null); // pending, processing, completed
+    const [analysisJobId, setAnalysisJobId] = useState(null);
+
     useEffect(() => {
         fetchAnalysis();
     }, [attemptData]);
@@ -26,18 +32,42 @@ function Analysis() {
                 const result = await studentService.getAttemptAnalysis(attemptData.attemptId);
 
                 if (result.success) {
+                    const backendScore = result.analysis.score;
                     setAnalysis({
                         ...result.analysis,
-                        score: attemptData.score,
-                        testName: attemptData.testName,
-                        totalMarks: attemptData.totalMarks,
-                    });
-                } else {
-                    setAnalysis({
-                        score: attemptData.score || 0,
+                        score: attemptData.score ?? backendScore?.obtained ?? 0,
                         testName: attemptData.testName || 'Test',
-                        totalMarks: attemptData.totalMarks || 100,
-                        percentage: Math.round((attemptData.score / attemptData.totalMarks) * 100) || 0,
+                        totalMarks: attemptData.totalMarks ?? backendScore?.total ?? 100,
+                        correct: backendScore?.correct || 0,
+                        incorrect: backendScore?.incorrect || 0,
+                        unattempted: backendScore?.unattempted || 0,
+                        percentage: backendScore?.percentage || 0
+                    });
+
+                    // Check if AI analysis (detective) already exists
+                    console.log('Backend /details response:', result);
+                    const aiData = result.analysis?.aiAnalysis;
+
+                    if (aiData && aiData.detective) {
+                        const detectiveOutput = aiData.detective.output || aiData.detective;
+                        console.log('Found existing Detective analysis:', detectiveOutput);
+                        setDetectiveData(detectiveOutput);
+                        setAnalysisStatus('completed');
+                    } else {
+                        console.log('No existing Detective analysis found in:', aiData);
+                    }
+                } else {
+                    // Use passed score object if available
+                    const passedAnalysis = attemptData.analysis || {};
+                    const score = attemptData.score || 0;
+                    const total = attemptData.totalMarks || 100;
+
+                    setAnalysis({
+                        ...passedAnalysis,
+                        score: score,
+                        testName: attemptData.testName || 'Test',
+                        totalMarks: total,
+                        percentage: passedAnalysis.percentage || Math.round((score / total) * 100) || 0,
                     });
                 }
             } else {
@@ -57,6 +87,7 @@ function Analysis() {
                 }
             }
         } catch (err) {
+            console.error('Error fetching analysis:', err);
             if (attemptData) {
                 setAnalysis({
                     score: attemptData.score || 0,
@@ -69,6 +100,58 @@ function Analysis() {
             }
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleAnalyzeMistakes = async () => {
+        if (!attemptData?.attemptId) return;
+
+        setAnalyzing(true);
+        setAnalysisStatus('processing');
+        console.log('Starting AI analysis for attempt:', attemptData.attemptId);
+
+        try {
+            const result = await agentService.startAnalysis(attemptData.attemptId);
+
+            if (result.success) {
+                setAnalysisJobId(result.jobId);
+                pollAnalysisStatus(result.jobId);
+            } else {
+                console.error('Failed to start analysis:', result.error);
+                setError(result.error);
+                setAnalyzing(false);
+                setAnalysisStatus('error');
+            }
+        } catch (err) {
+            console.error('Error initiating analysis:', err);
+            setAnalyzing(false);
+            setAnalysisStatus('error');
+        }
+    };
+
+    const pollAnalysisStatus = async (jobId) => {
+        console.log('Polling analysis status for job:', jobId);
+
+        try {
+            await agentService.pollAnalysis(jobId, (status) => {
+                // Update progress or status if needed
+                console.log('Analysis status update:', status);
+                if (status.status === 'completed' && status.agents?.detective) {
+                    setDetectiveData(status.agents.detective.output);
+                }
+            });
+
+            // Final check
+            const finalStatus = await agentService.getAnalysisStatus(jobId);
+            if (finalStatus.success && finalStatus.agents?.detective?.output) {
+                setDetectiveData(finalStatus.agents.detective.output);
+                setAnalysisStatus('completed');
+            }
+        } catch (err) {
+            console.error('Polling failed:', err);
+            setAnalysisStatus('error');
+        } finally {
+            setAnalyzing(false);
         }
     };
 
@@ -120,24 +203,6 @@ function Analysis() {
                         <Icon name="plus" size={20} />
                         Take a Mock Test
                     </button>
-
-                    <div className="an-empty__info">
-                        <div className="an-info-card">
-                            <Icon name="chart" size={24} />
-                            <h4>Performance Breakdown</h4>
-                            <p>See your score across all sections</p>
-                        </div>
-                        <div className="an-info-card">
-                            <Icon name="agents" size={24} />
-                            <h4>AI Insights</h4>
-                            <p>Get personalized improvement tips</p>
-                        </div>
-                        <div className="an-info-card">
-                            <Icon name="target" size={24} />
-                            <h4>Weak Areas</h4>
-                            <p>Identify topics to focus on</p>
-                        </div>
-                    </div>
                 </div>
             </div>
         );
@@ -185,13 +250,16 @@ function Analysis() {
                     </div>
                 </div>
 
-                <button
-                    className="an-btn an-btn--primary"
-                    onClick={() => navigate('/agents', { state: { attemptId: attemptData?.attemptId } })}
-                >
-                    <Icon name="agents" size={18} />
-                    Get AI Analysis
-                </button>
+                {!detectiveData && !analyzing && (
+                    <button
+                        className="an-btn an-btn--primary"
+                        onClick={handleAnalyzeMistakes}
+                        disabled={analyzing}
+                    >
+                        <Icon name="agents" size={18} />
+                        Analyze Mistakes with AI
+                    </button>
+                )}
             </div>
 
             {/* Stats Grid */}
@@ -234,6 +302,101 @@ function Analysis() {
                 </div>
             </div>
 
+            {/* AI Detective Analysis Section */}
+            {(detectiveData || analyzing) && (
+                <div className="an-detective-section animate-fadeInUp">
+                    <div className="an-detective-header">
+                        <div className="an-detective-icon">
+                            <Icon name={analyzing ? "refresh" : "search"} size={32} className={analyzing ? "animate-spin" : ""} />
+                        </div>
+                        <div>
+                            <h2>Detective Agent Analysis</h2>
+                            <p>{analyzing ? "Classifying your mistakes and finding patterns..." : "Deep dive into your mistake patterns and weak areas"}</p>
+                        </div>
+                    </div>
+
+                    {analyzing && (
+                        <div className="an-detective-loading">
+                            <div className="an-loading-bar">
+                                <div className="an-loading-bar__fill"></div>
+                            </div>
+                            <p>Powered by Gemini 1.5 Flash</p>
+                        </div>
+                    )}
+
+                    {detectiveData && (
+                        <div className="an-detective-content animate-fadeIn">
+                            {/* Summary Message */}
+                            <div className="an-detective-message">
+                                <p>{detectiveData.message}</p>
+                            </div>
+
+                            <div className="an-detective-grid">
+                                {/* Mistake Patterns */}
+                                <div className="an-card an-patterns-card">
+                                    <h3>Mistake Patterns</h3>
+                                    <div className="an-patterns-list">
+                                        {Object.entries(detectiveData.patterns || {}).map(([type, count]) => (
+                                            count > 0 && (
+                                                <div key={type} className="an-pattern-item">
+                                                    <div className="an-pattern-info">
+                                                        <span className="an-pattern-label">
+                                                            {type.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                                                        </span>
+                                                        <span className="an-pattern-count">{count}</span>
+                                                    </div>
+                                                    <div className="an-pattern-bar-bg">
+                                                        <div
+                                                            className="an-pattern-bar-fill"
+                                                            style={{
+                                                                width: `${(count / (detectiveData.totalMistakes || 1)) * 100}%`,
+                                                                background: type === 'silly' ? '#f59e0b' : type === 'conceptual' ? '#ef4444' : '#3b82f6'
+                                                            }}
+                                                        ></div>
+                                                    </div>
+                                                </div>
+                                            )
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Weak Topics */}
+                                <div className="an-card an-weak-card">
+                                    <h3>Weak Topics</h3>
+                                    <div className="an-tags">
+                                        {detectiveData.weakTopics?.map((topic, i) => (
+                                            <span key={i} className="an-tag an-tag--red">{topic}</span>
+                                        ))}
+                                        {(!detectiveData.weakTopics || detectiveData.weakTopics.length === 0) && (
+                                            <p className="text-muted">No specific weak topics detected.</p>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Detailed Insights */}
+                            {detectiveData.insights?.length > 0 && (
+                                <div className="an-insights-list">
+                                    <h3>Key Insights</h3>
+                                    {detectiveData.insights.map((insight, idx) => (
+                                        <div key={idx} className="an-insight-card">
+                                            <div className="an-insight-header">
+                                                <span className={`an-insight-type type-${insight.mistakeType}`}>
+                                                    {insight.mistakeType?.toUpperCase()}
+                                                </span>
+                                                <span className="an-insight-topic">{insight.topic}</span>
+                                            </div>
+                                            <p className="an-insight-reason"><strong>Analysis:</strong> {insight.reason}</p>
+                                            <p className="an-insight-fix"><strong>Fix:</strong> {insight.fix}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
+
             {/* Section Breakdown */}
             {analysis.sectionScores && (
                 <div className="an-sections">
@@ -268,40 +431,16 @@ function Analysis() {
                 </div>
             )}
 
-            {/* Action Cards */}
-            <div className="an-actions">
-                <div className="an-action" onClick={() => navigate('/agents', { state: { attemptId: attemptData?.attemptId } })}>
-                    <div className="an-action__icon" style={{ background: '#8b5cf620', color: '#8b5cf6' }}>
-                        <Icon name="agents" size={28} />
-                    </div>
-                    <div className="an-action__content">
-                        <h3>AI Agent Analysis</h3>
-                        <p>Get detailed insights from our AI agents</p>
-                    </div>
-                    <Icon name="arrowRight" size={20} className="an-action__arrow" />
-                </div>
-
-                <div className="an-action" onClick={() => navigate('/roadmap')}>
-                    <div className="an-action__icon" style={{ background: '#10b98120', color: '#10b981' }}>
-                        <Icon name="roadmap" size={28} />
-                    </div>
-                    <div className="an-action__content">
-                        <h3>Study Roadmap</h3>
-                        <p>View your personalized study plan</p>
-                    </div>
-                    <Icon name="arrowRight" size={20} className="an-action__arrow" />
-                </div>
-
-                <div className="an-action" onClick={() => navigate('/test')}>
-                    <div className="an-action__icon" style={{ background: '#3b82f620', color: '#3b82f6' }}>
-                        <Icon name="clipboard" size={28} />
-                    </div>
-                    <div className="an-action__content">
-                        <h3>Take Another Test</h3>
-                        <p>Practice more to improve your score</p>
-                    </div>
-                    <Icon name="arrowRight" size={20} className="an-action__arrow" />
-                </div>
+            {/* Footer Actions */}
+            <div className="an-footer-actions">
+                <button className="an-btn an-btn--secondary" onClick={() => navigate('/roadmap')}>
+                    <Icon name="roadmap" size={20} />
+                    View Study Roadmap
+                </button>
+                <button className="an-btn an-btn--primary" onClick={() => navigate('/test')}>
+                    <Icon name="refresh" size={20} />
+                    Take Another Test
+                </button>
             </div>
 
             {/* Performance Message */}

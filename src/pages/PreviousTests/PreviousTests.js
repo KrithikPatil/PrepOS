@@ -40,12 +40,11 @@ function PreviousTests() {
     };
 
     const handleViewAnalysis = (test) => {
-        navigate('/agents', { state: { attemptId: test.id } });
+        navigate('/analysis', { state: { attemptId: test.id } });
     };
 
     const handleOpenAITutor = (test) => {
-        setSelectedTest(test);
-        setShowAITutor(true);
+        navigate(`/tutor/${test.id}`);
     };
 
     const getSectionColor = (name) => {

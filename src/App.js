@@ -13,6 +13,7 @@ import Roadmap from './pages/Roadmap/Roadmap';
 import KnowYourExam from './pages/KnowYourExam/KnowYourExam';
 import PreviousTests from './pages/PreviousTests/PreviousTests';
 import QuestionGenerator from './pages/QuestionGenerator/QuestionGenerator';
+import TutorSession from './pages/TutorSession/TutorSession';
 import Login from './pages/Auth/Login';
 import Signup from './pages/Auth/Signup';
 import AuthCallback from './pages/Auth/AuthCallback';
@@ -123,6 +124,13 @@ function AppRoutes() {
                 <ProtectedRoute>
                     <Layout>
                         <QuestionGenerator />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/tutor/:attemptId" element={
+                <ProtectedRoute>
+                    <Layout>
+                        <TutorSession />
                     </Layout>
                 </ProtectedRoute>
             } />

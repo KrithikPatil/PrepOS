@@ -61,3 +61,10 @@ def get_attempts_collection():
 
 def get_roadmaps_collection():
     return MongoDB.get_db()["roadmaps"]
+
+def get_detective_collection():
+    return MongoDB.get_db()["agent_detective"]
+
+def get_tutor_collection():
+    return MongoDB.get_db()["agent_tutor"]
+

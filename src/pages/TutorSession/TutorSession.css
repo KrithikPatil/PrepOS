@@ -1,0 +1,558 @@
+/* TutorSession Page Styles */
+
+.ts-page {
+    min-height: 100vh;
+    background: var(--bg-primary);
+}
+
+/* Loading & Error */
+.ts-loading,
+.ts-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+    text-align: center;
+    padding: var(--spacing-2xl);
+}
+
+.ts-loading__spinner {
+    width: 48px;
+    height: 48px;
+    border: 3px solid var(--border-light);
+    border-top-color: var(--accent-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.ts-error h2 {
+    margin-top: var(--spacing-lg);
+    color: var(--text-primary);
+}
+
+.ts-error p {
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-xl);
+}
+
+/* Hero Section */
+.ts-hero {
+    position: relative;
+    padding: var(--spacing-2xl) var(--spacing-xl);
+    overflow: hidden;
+}
+
+.ts-hero__bg {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+}
+
+.ts-hero__gradient {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+    opacity: 0.1;
+}
+
+.ts-hero__content {
+    position: relative;
+    z-index: 1;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.ts-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-bottom: var(--spacing-lg);
+}
+
+.ts-back-btn:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.ts-hero__title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-sm);
+}
+
+.ts-hero__title span {
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.ts-hero__subtitle {
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+}
+
+/* Content */
+.ts-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: var(--spacing-xl);
+}
+
+/* Question Cards */
+.ts-questions-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.ts-question-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.ts-question-card:hover {
+    border-color: var(--border-medium);
+    box-shadow: var(--shadow-md);
+}
+
+.ts-question-card.expanded {
+    border-color: var(--accent-primary);
+}
+
+.ts-question-card__header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-lg);
+    cursor: pointer;
+}
+
+.ts-question-card__number {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 0.875rem;
+    flex-shrink: 0;
+}
+
+.ts-question-card__info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.ts-question-card__topic {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.ts-question-card__section {
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+}
+
+.ts-question-card__status {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.ts-question-card__status--correct {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+}
+
+.ts-question-card__status--incorrect {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+}
+
+.ts-question-card__status--skipped {
+    background: rgba(107, 114, 128, 0.15);
+    color: #6b7280;
+}
+
+.ts-question-card__toggle {
+    color: var(--text-tertiary);
+}
+
+/* Question Body */
+.ts-question-card__body {
+    padding: 0 var(--spacing-lg) var(--spacing-lg);
+    border-top: 1px solid var(--border-light);
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.ts-question-text {
+    padding: var(--spacing-lg);
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    margin-top: var(--spacing-lg);
+    color: var(--text-primary);
+    line-height: 1.6;
+}
+
+.ts-answers {
+    display: flex;
+    gap: var(--spacing-xl);
+    margin-top: var(--spacing-lg);
+    flex-wrap: wrap;
+}
+
+.ts-answer {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.ts-answer__label {
+    color: var(--text-tertiary);
+    font-size: 0.875rem;
+}
+
+.ts-answer__value {
+    font-weight: 600;
+    padding: var(--spacing-xs) var(--spacing-md);
+    border-radius: var(--radius-sm);
+}
+
+.ts-answer__value--correct {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+}
+
+.ts-answer__value--incorrect {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+}
+
+.ts-answer__value--skipped {
+    background: var(--bg-tertiary);
+    color: var(--text-tertiary);
+}
+
+/* Explanation */
+.ts-explanation {
+    margin-top: var(--spacing-lg);
+    padding: var(--spacing-lg);
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(168, 85, 247, 0.05));
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: var(--radius-md);
+}
+
+.ts-explanation h4 {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    color: var(--accent-primary);
+    margin-bottom: var(--spacing-md);
+}
+
+.ts-explanation p {
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: var(--spacing-sm);
+}
+
+.ts-explanation__hook {
+    font-style: italic;
+    color: var(--text-primary) !important;
+}
+
+.ts-explanation__key {
+    margin-top: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+}
+
+/* Ask AI Button */
+.ts-ask-ai-btn {
+    margin-top: var(--spacing-lg);
+}
+
+/* Buttons */
+.ts-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-lg);
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+}
+
+.ts-btn--primary {
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+    color: white;
+}
+
+.ts-btn--primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
+}
+
+/* Chat Modal */
+.ts-chat-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: var(--spacing-lg);
+}
+
+.ts-chat-modal {
+    background: var(--bg-primary);
+    border-radius: var(--radius-xl);
+    width: 100%;
+    max-width: 600px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+}
+
+.ts-chat-modal__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-lg);
+    border-bottom: 1px solid var(--border-light);
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1));
+}
+
+.ts-chat-modal__title {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.ts-chat-modal__title svg {
+    color: var(--accent-primary);
+}
+
+.ts-chat-modal__close {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.ts-chat-modal__close:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.ts-chat-modal__messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--spacing-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.ts-chat-message {
+    display: flex;
+    gap: var(--spacing-sm);
+    max-width: 85%;
+}
+
+.ts-chat-message--user {
+    align-self: flex-end;
+    flex-direction: row-reverse;
+}
+
+.ts-chat-message__avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    flex-shrink: 0;
+}
+
+.ts-chat-message__content {
+    padding: var(--spacing-md);
+    border-radius: var(--radius-lg);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.ts-chat-message--user .ts-chat-message__content {
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+    color: white;
+}
+
+.ts-chat-message__content p {
+    margin: 0;
+    line-height: 1.5;
+}
+
+.ts-chat-message__content p+p {
+    margin-top: var(--spacing-sm);
+}
+
+.ts-chat-message__typing {
+    display: flex;
+    gap: 4px;
+    padding: var(--spacing-md);
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+}
+
+.ts-chat-message__typing span {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-tertiary);
+    animation: typingBounce 1.4s ease-in-out infinite;
+}
+
+.ts-chat-message__typing span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.ts-chat-message__typing span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes typingBounce {
+
+    0%,
+    60%,
+    100% {
+        transform: translateY(0);
+    }
+
+    30% {
+        transform: translateY(-4px);
+    }
+}
+
+.ts-chat-modal__input {
+    display: flex;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-lg);
+    border-top: 1px solid var(--border-light);
+    background: var(--bg-secondary);
+}
+
+.ts-chat-modal__input input {
+    flex: 1;
+    padding: var(--spacing-md) var(--spacing-lg);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-full);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 0.95rem;
+}
+
+.ts-chat-modal__input input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+}
+
+.ts-chat-modal__input button {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.ts-chat-modal__input button:hover:not(:disabled) {
+    transform: scale(1.05);
+}
+
+.ts-chat-modal__input button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .ts-hero__title {
+        font-size: 1.75rem;
+    }
+
+    .ts-question-card__header {
+        flex-wrap: wrap;
+    }
+
+    .ts-answers {
+        flex-direction: column;
+        gap: var(--spacing-sm);
+    }
+
+    .ts-chat-modal {
+        max-height: 90vh;
+    }
+}

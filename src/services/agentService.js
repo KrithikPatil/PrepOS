@@ -184,6 +184,31 @@ export const agentService = {
             message: strategistOutput.message,
         };
     },
+
+    /**
+     * Send a message to the AI Tutor for a specific question
+     * @param {string} attemptId - Test attempt ID
+     * @param {number} questionIndex - Index of the question in the attempt
+     * @param {string} userMessage - User's question or message
+     * @returns {Promise} - { success, response, topic }
+     */
+    sendTutorChat: async (attemptId, questionIndex, userMessage) => {
+        try {
+            const result = await api.post('/agents/tutor/chat', {
+                attemptId,
+                questionIndex,
+                userMessage,
+            });
+            return {
+                success: result.success,
+                response: result.response,
+                topic: result.topic,
+            };
+        } catch (error) {
+            console.error('Failed to send tutor chat:', error);
+            return { success: false, error: error.message };
+        }
+    },
 };
 
 export default agentService;

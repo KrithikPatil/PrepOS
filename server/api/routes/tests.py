@@ -3,7 +3,7 @@ Tests Routes
 Mock test CRUD operations and submissions
 """
 
-from fastapi import APIRouter, HTTPException, Request, Query
+from fastapi import APIRouter, HTTPException, Request, Query, BackgroundTasks
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
@@ -122,7 +122,7 @@ async def get_test(test_id: str, request: Request):
 
 
 @router.post("/{test_id}/submit")
-async def submit_test(test_id: str, submission: SubmitRequest, request: Request):
+async def submit_test(test_id: str, submission: SubmitRequest, request: Request, background_tasks: BackgroundTasks):
     """Submit test answers"""
     # Verify auth
     auth_header = request.headers.get("Authorization")
@@ -175,9 +175,14 @@ async def submit_test(test_id: str, submission: SubmitRequest, request: Request)
     }
     
     result = await attempts_col.insert_one(attempt)
+    attempt_id = str(result.inserted_id)
+    
+    # Trigger AI Analysis in Background
+    from services.analysis_service import run_analysis_pipeline
+    background_tasks.add_task(run_analysis_pipeline, attempt_id, attempt, user_id)
     
     return {
-        "attemptId": str(result.inserted_id),
+        "attemptId": attempt_id,
         "score": attempt["score"],
         "message": "Test submitted successfully"
     }

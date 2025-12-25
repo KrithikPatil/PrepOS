@@ -269,6 +269,29 @@ const icons = {
     shield: (
         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
     ),
+
+    // UTILITY ICONS
+    plus: (
+        <path d="M12 5v14M5 12h14" />
+    ),
+    x: (
+        <path d="M18 6L6 18M6 6l12 12" />
+    ),
+    minus: (
+        <path d="M5 12h14" />
+    ),
+    flag: (
+        <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7" />
+    ),
+    chevronUp: (
+        <path d="M18 15l-6-6-6 6" />
+    ),
+    chevronDown: (
+        <path d="M6 9l6 6 6-6" />
+    ),
+    close: (
+        <path d="M18 6L6 18M6 6l12 12" />
+    ),
 };
 
 function Icon({

@@ -57,8 +57,17 @@ export const studentService = {
      */
     getAttemptAnalysis: async (attemptId) => {
         try {
-            const analysis = await api.get(`/students/attempts/${attemptId}/analysis`);
-            return { success: true, analysis };
+            const analysis = await api.get(`/students/attempts/${attemptId}`);
+            // The backend returns { ..., aiAnalysis: ... }
+            // We map it to { analysis: { ...attempt, aiAnalysis } } format expected by frontend
+            return {
+                success: true,
+                analysis: {
+                    ...analysis,
+                    // If backend returns flat structure, we might need to adjust, 
+                    // but looking at students.py it returns full attempt object with aiAnalysis
+                }
+            };
         } catch (error) {
             console.error('Failed to get analysis:', error);
             return { success: false, error: error.message, analysis: null };
